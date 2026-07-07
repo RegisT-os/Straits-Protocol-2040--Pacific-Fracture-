@@ -5,8 +5,9 @@ import { deltaChips } from './format';
 
 interface Props {
   state: GameState;
-  selectedActionId: string | null;
-  onSelect: (actionId: string) => void;
+  pendingActions: string[];
+  slots: number;
+  onToggle: (actionId: string) => void;
 }
 
 const CATEGORY_LABEL: Record<ActionDef['category'], string> = {
@@ -31,7 +32,7 @@ const CATEGORY_COLOR: Record<ActionDef['category'], string> = {
   strategy: 'text-amber-400 border-amber-900',
 };
 
-export function CommandPanel({ state, selectedActionId, onSelect }: Props) {
+export function CommandPanel({ state, pendingActions, slots, onToggle }: Props) {
   const entries = ACTIONS.map((action) => ({
     action,
     availability: getActionAvailability(state, action),
@@ -39,34 +40,50 @@ export function CommandPanel({ state, selectedActionId, onSelect }: Props) {
   // Available actions first; locked ones stay visible with a reason.
   entries.sort((a, b) => Number(b.availability.available) - Number(a.availability.available));
 
+  const slotsFull = pendingActions.length >= slots;
+
   return (
     <section className="flex min-h-0 flex-col rounded-lg border border-slate-800 bg-slate-900/60">
       <header className="border-b border-slate-800 px-4 py-2.5">
         <h2 className="text-sm font-semibold tracking-wide text-slate-200 uppercase">
           Command Panel
         </h2>
-        <p className="text-xs text-slate-500">Choose one action for this week, then advance.</p>
+        <p className="text-xs text-slate-500">
+          Select up to {slots} action{slots > 1 ? 's' : ''} for this week, then advance.
+          {slotsFull && ' All slots used — deselect to swap.'}
+        </p>
       </header>
       <div className="feed-scroll min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
         {entries.map(({ action, availability }) => {
-          const selected = selectedActionId === action.id;
+          const selected = pendingActions.includes(action.id);
+          const blocked = !selected && slotsFull;
           const chips = deltaChips(action.metricEffects);
           return (
             <button
               key={action.id}
               type="button"
-              disabled={!availability.available}
-              onClick={() => onSelect(action.id)}
+              disabled={!availability.available || blocked}
+              title={blocked ? 'All action slots used — deselect another action first' : undefined}
+              onClick={() => onToggle(action.id)}
               className={`w-full rounded-md border p-3 text-left transition-colors ${
                 selected
                   ? 'border-cyan-500 bg-cyan-950/40 ring-1 ring-cyan-500'
-                  : availability.available
-                    ? 'border-slate-800 bg-slate-900 hover:border-slate-600'
-                    : 'cursor-not-allowed border-slate-800/60 bg-slate-950/60 opacity-60'
+                  : !availability.available
+                    ? 'cursor-not-allowed border-slate-800/60 bg-slate-950/60 opacity-60'
+                    : blocked
+                      ? 'cursor-not-allowed border-slate-800 bg-slate-900 opacity-50'
+                      : 'border-slate-800 bg-slate-900 hover:border-slate-600'
               }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-semibold text-slate-100">{action.name}</span>
+                <span className="text-sm font-semibold text-slate-100">
+                  {selected && (
+                    <span className="mr-1.5 rounded bg-cyan-600 px-1.5 py-0.5 font-mono text-[10px] text-white">
+                      {pendingActions.indexOf(action.id) + 1}
+                    </span>
+                  )}
+                  {action.name}
+                </span>
                 <span
                   className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase ${CATEGORY_COLOR[action.category]}`}
                 >

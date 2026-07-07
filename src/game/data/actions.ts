@@ -1,7 +1,17 @@
 import type { ActionDef } from '../types/gameTypes';
 
 // Every action is a tradeoff. Nothing here is purely good.
+// One exception: 'monitor-situation' has no cooldown and no restrictions,
+// guaranteeing the player always has at least one selectable action.
 export const ACTIONS: ActionDef[] = [
+  {
+    id: 'monitor-situation',
+    name: 'Monitor the Situation',
+    description:
+      'Hold posture and watch the boards: no initiatives, no exposure. A week of dashboards, coffee, and letting other people make the mistakes.',
+    category: 'strategy',
+    metricEffects: { mentalLoad: -2, personalStamina: 1 },
+  },
   {
     id: 'national-cyber-shield',
     name: 'Activate National Cyber Shield',
@@ -50,6 +60,16 @@ export const ACTIONS: ActionDef[] = [
       'A national pre-bunking and verification campaign: deepfake literacy, official-channel verification, rumour response cells.',
     category: 'information',
     metricEffects: { publicReality: 8, institutionalTrust: 3, personalStamina: -5, mentalLoad: 3 },
+    schedules: [
+      {
+        id: 'public-trust-stabilization',
+        delayWeeks: 3,
+        title: 'Public Trust Stabilization',
+        description:
+          'The pre-bunking campaign compounds: verification habits stick, rumour half-life drops, and official channels regain ground.',
+        metricEffects: { publicReality: 3, institutionalTrust: 2 },
+      },
+    ],
     cooldown: 5,
   },
   {
@@ -64,6 +84,16 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'china-frag', pressure: 5 },
     ],
     flagsAdded: ['aligned-us'],
+    schedules: [
+      {
+        id: 'alignment-dependency-debate',
+        delayWeeks: 5,
+        title: 'Alignment Dependency Debate',
+        description:
+          'Parliament debates what happens to Malaysian navigation and banking if Washington ever switches the coverage off. Nobody likes the answer.',
+        metricEffects: { sovereignty: -2, publicReality: -2, alignmentPressure: 3 },
+      },
+    ],
     cooldown: 8,
   },
   {
@@ -78,6 +108,7 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'europe-compact', relationship: -3 },
       { actorId: 'china-frag', pressure: -3 },
     ],
+    flagsAdded: ['strict-neutrality'],
     cooldown: 4,
   },
   {
@@ -93,12 +124,17 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'russia-network', relationship: -10, aggression: 8 },
     ],
     flagsAdded: ['condemned-russia'],
-    risk: {
-      label: 'Russian grey-zone retaliation',
-      chance: 0.5,
-      metricEffects: { cyberResilience: -4, publicReality: -3 },
-      report: 'Within days, Russian-linked crews probe Malaysian media and logistics networks in apparent retaliation.',
-    },
+    schedules: [
+      {
+        id: 'russian-cyber-retaliation-probe',
+        delayWeeks: 3,
+        title: 'Russian Cyber Retaliation Probe',
+        description:
+          'Three weeks after the condemnation, Russian-linked crews probe Malaysian media and logistics networks. The timing is not a coincidence and is not meant to look like one.',
+        metricEffects: { cyberResilience: -4, publicReality: -3 },
+        actorEffects: [{ actorId: 'russia-network', pressure: 4 }],
+      },
+    ],
     once: true,
   },
   {
@@ -208,6 +244,16 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'china-frag', pressure: 6, aggression: 4 },
     ],
     flagsAdded: ['aligned-us', 'us-package-accepted'],
+    schedules: [
+      {
+        id: 'sovereignty-review-backlash',
+        delayWeeks: 4,
+        title: 'Sovereignty Review Backlash',
+        description:
+          'A parliamentary review of the US cyber package leaks: foreign sensors on national networks, foreign analysts with standing access. The opposition has questions. So does the public.',
+        metricEffects: { institutionalTrust: -3, sovereignty: -2, publicReality: -2 },
+      },
+    ],
     once: true,
   },
   {

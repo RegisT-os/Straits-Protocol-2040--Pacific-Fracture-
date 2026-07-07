@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { GameState, RoleId } from './game/types/gameTypes';
+import type { DifficultyId, GameState, RoleId } from './game/types/gameTypes';
 import { createInitialState } from './game/data/initialState';
 import { randomSeed } from './game/engine/rng';
-import { advanceTurn, resolvePendingEvent } from './game/engine/turnEngine';
+import { advanceTurn, resolvePendingEvent, togglePendingAction } from './game/engine/turnEngine';
 import { clearSave, hasSave, loadGame, saveGame, savedAt } from './game/engine/saveEngine';
 import { CampaignSetup } from './ui/CampaignSetup';
 import { GameShell } from './ui/GameShell';
@@ -26,8 +26,8 @@ export default function App() {
     flashTimer.current = window.setTimeout(() => setSaveFlash(false), 1500);
   }, []);
 
-  const handleStart = useCallback((roleId: RoleId) => {
-    const fresh = createInitialState(roleId, randomSeed());
+  const handleStart = useCallback((roleId: RoleId, difficultyId: DifficultyId) => {
+    const fresh = createInitialState(roleId, randomSeed(), difficultyId);
     setState(fresh);
     saveGame(fresh);
     setSaveExists(true);
@@ -39,10 +39,19 @@ export default function App() {
     else setSaveExists(false); // corrupt/incompatible save — fall back gracefully
   }, []);
 
-  const handleAdvance = useCallback((actionId: string) => {
+  const handleToggleAction = useCallback((actionId: string) => {
     setState((prev) => {
       if (!prev) return prev;
-      const next = advanceTurn(prev, actionId);
+      const next = togglePendingAction(prev, actionId);
+      saveGame(next); // selection survives a reload
+      return next;
+    });
+  }, []);
+
+  const handleAdvance = useCallback(() => {
+    setState((prev) => {
+      if (!prev || prev.pendingActions.length === 0) return prev;
+      const next = advanceTurn(prev, prev.pendingActions);
       saveGame(next); // auto-save every turn
       return next;
     });
@@ -99,6 +108,7 @@ export default function App() {
   return (
     <GameShell
       state={state}
+      onToggleAction={handleToggleAction}
       onAdvance={handleAdvance}
       onResolveEvent={handleResolveEvent}
       onSave={handleSave}

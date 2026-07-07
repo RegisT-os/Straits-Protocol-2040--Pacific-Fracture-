@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import type { RoleId } from '../game/types/gameTypes';
+import type { DifficultyId, RoleId } from '../game/types/gameTypes';
 import { ROLES } from '../game/data/roles';
+import { DIFFICULTIES } from '../game/data/difficulty';
 
 interface Props {
   saveExists: boolean;
   savedAtLabel: string | null;
-  onStart: (roleId: RoleId) => void;
+  onStart: (roleId: RoleId, difficultyId: DifficultyId) => void;
   onLoad: () => void;
 }
 
 export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Props) {
   const [selected, setSelected] = useState<RoleId | null>(null);
+  const [difficulty, setDifficulty] = useState<DifficultyId>('adviser');
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -76,11 +78,36 @@ export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Pro
           })}
         </div>
 
+        <h3 className="mb-3 text-center text-sm font-semibold tracking-wide text-slate-300 uppercase">
+          Difficulty
+        </h3>
+        <div className="mb-8 grid gap-3 sm:grid-cols-3">
+          {DIFFICULTIES.map((diff) => {
+            const active = difficulty === diff.id;
+            return (
+              <button
+                key={diff.id}
+                type="button"
+                onClick={() => setDifficulty(diff.id)}
+                className={`rounded-lg border p-3 text-left transition-colors ${
+                  active
+                    ? 'border-amber-500 bg-amber-950/30 ring-1 ring-amber-500'
+                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-600'
+                }`}
+              >
+                <h4 className="text-sm font-semibold text-slate-100">{diff.name}</h4>
+                <p className="mt-0.5 text-xs text-amber-400/90">{diff.tagline}</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">{diff.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
         <div className="flex flex-col items-center gap-3">
           <button
             type="button"
             disabled={!selected}
-            onClick={() => selected && onStart(selected)}
+            onClick={() => selected && onStart(selected, difficulty)}
             className="rounded-md bg-cyan-600 px-8 py-3 text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
             {selected ? 'Start Campaign' : 'Select a role to begin'}

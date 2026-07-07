@@ -85,6 +85,12 @@ export const ACTORS: ActorDef[] = [
     wants: ['Punish Taiwan supporters', 'Block ASEAN-US alignment', 'Keep SCS pressure alive'],
     initial: { relationship: -10, pressure: 40, aggression: 50, intent: 'Deter Malaysian drift toward Washington' },
     phaseAggression: { 2: 15, 4: 10 },
+    dynamics: [
+      { requiresFlags: ['aligned-us'], multiplier: 1.4 },
+      { requiresFlags: ['supported-taiwan'], multiplier: 1.25 },
+      { requiresFlags: ['strict-neutrality'], multiplier: 0.75 },
+      { metricAbove: { maritimeControl: 65 }, multiplier: 1.2 },
+    ],
     moves: [
       {
         id: 'cn-cyber-probing',
@@ -213,6 +219,10 @@ export const ACTORS: ActorDef[] = [
     wants: ['Profit from chaos', 'Weaken US influence', 'Sell grey-zone tools', 'Exploit neutrals'],
     initial: { relationship: -5, pressure: 20, aggression: 40, intent: 'Monetize Malaysian anxiety' },
     phaseAggression: { 3: 10, 4: 5 },
+    dynamics: [
+      { requiresFlags: ['condemned-russia'], multiplier: 1.5 },
+      { requiresFlags: ['engaged-europe'], multiplier: 1.3 },
+    ],
     moves: [
       {
         id: 'ru-grey-tools',
@@ -220,6 +230,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'A Russian intermediary offers "defensive cyber capabilities, very effective, very deniable" at friendship prices.',
         weight: 2,
+        dynamics: [{ metricBelow: { cyberResilience: 45 }, multiplier: 2 }],
         forbidsFlags: ['condemned-russia'],
         metricEffects: { mentalLoad: 2 },
         flagsAdded: ['russia-tools-offered'],
@@ -279,6 +290,10 @@ export const ACTORS: ActorDef[] = [
     wants: ['Contain Russia', 'Pressure neutrals', 'Restore credibility without the US'],
     initial: { relationship: 15, pressure: 20, aggression: 30, intent: 'Recruit moral support and sanctions alignment' },
     phaseAggression: { 4: 5, 5: 5 },
+    dynamics: [
+      { requiresFlags: ['baltic-violation'], multiplier: 1.3 },
+      { requiresFlags: ['engaged-europe'], multiplier: 1.2 },
+    ],
     moves: [
       {
         id: 'eu-sanctions-request',
@@ -286,6 +301,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'The European Defence Compact formally asks ASEAN states to join expanded Russia sanctions. Jakarta looks at Kuala Lumpur. Kuala Lumpur looks away.',
         weight: 3,
+        dynamics: [{ requiresFlags: ['baltic-violation'], multiplier: 1.5 }],
         metricEffects: { alignmentPressure: 4 },
         actorEffects: [{ actorId: 'europe-compact', pressure: 5 }],
         cooldown: 5,
@@ -318,6 +334,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'European ambassadors jointly request Malaysia publicly condemn the latest Russian provocation in the Baltics.',
         weight: 2,
+        dynamics: [{ requiresFlags: ['baltic-violation'], multiplier: 1.5 }],
         forbidsFlags: ['condemned-russia'],
         metricEffects: { alignmentPressure: 3 },
         actorEffects: [{ actorId: 'europe-compact', pressure: 4 }],
@@ -354,6 +371,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'MAS proposes joint settlement fallback arrangements with BNM — mutual insurance against timing attacks on either system.',
         weight: 3,
+        dynamics: [{ metricBelow: { financialContinuity: 50 }, metricAbove: { institutionalTrust: 45 }, multiplier: 2.5 }],
         metricEffects: { financialContinuity: 3 },
         actorEffects: [{ actorId: 'singapore-authority', relationship: 3 }],
         flagsAdded: ['sg-banking-offered'],
@@ -365,6 +383,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'Singapore quietly tightens Causeway and Tuas screening, citing "regional conditions". Johor commuters absorb the cost.',
         weight: 2,
+        dynamics: [
+          { metricBelow: { publicReality: 45 }, multiplier: 2 },
+          { metricBelow: { institutionalTrust: 45 }, multiplier: 2 },
+        ],
         metricEffects: { financialContinuity: -1, publicReality: -1 },
         actorEffects: [{ actorId: 'singapore-authority', pressure: 3 }],
         cooldown: 5,
@@ -485,6 +507,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Foreign funds rotate out of ringgit assets. The outflow is orderly, which somehow makes it worse.',
         weight: 2,
+        dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2.5 }],
         metricEffects: { financialContinuity: -4 },
         cooldown: 4,
       },
@@ -494,6 +517,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'War-risk insurance premiums for Straits transits spike 40%. Shippers begin quietly rerouting.',
         weight: 2,
+        dynamics: [{ metricBelow: { maritimeControl: 45 }, multiplier: 2.5 }],
         phases: [2, 3, 4, 5],
         metricEffects: { maritimeControl: -2, energyAssurance: -1 },
         cooldown: 6,
@@ -504,6 +528,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'A major rating agency places Malaysia on negative watch, citing "geopolitical positioning uncertainty".',
         weight: 2,
+        dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2 }],
         metricEffects: { financialContinuity: -3, institutionalTrust: -1 },
         cooldown: 8,
       },
@@ -513,6 +538,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Interbank liquidity tightens sharply after rumours of settlement timing anomalies. BNM works the phones all night.',
         weight: 1,
+        dynamics: [{ metricBelow: { financialContinuity: 40 }, multiplier: 2 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -5, mentalLoad: 3 },
         cooldown: 8,
@@ -523,6 +549,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'Markets reward Malaysian stability with a relief rally. Fund letters use the phrase "quality neutral" approvingly.',
         weight: 3,
+        dynamics: [
+          { metricAbove: { financialContinuity: 70, institutionalTrust: 60 }, multiplier: 3 },
+          { metricBelow: { financialContinuity: 45 }, multiplier: 0.3 },
+        ],
         metricEffects: { financialContinuity: 5, institutionalTrust: 2 },
         cooldown: 6,
       },
@@ -540,6 +570,7 @@ export const ACTORS: ActorDef[] = [
     wants: ['Money', 'Chaos as cover', 'Soft targets'],
     initial: { relationship: -50, pressure: 35, aggression: 48, intent: 'Harvest weak infrastructure at scale' },
     phaseAggression: { 3: 15, 5: 10 },
+    dynamics: [{ metricBelow: { cyberResilience: 50 }, multiplier: 1.5 }],
     moves: [
       {
         id: 'apt-ransomware-wave',
@@ -547,6 +578,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'An automated ransomware wave sweeps Malaysian SMEs and two state agencies. The ransom notes are polite, multilingual, and machine-generated.',
         weight: 3,
+        dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 1.5 }],
         metricEffects: { cyberResilience: -4, financialContinuity: -2 },
         cooldown: 4,
       },
@@ -565,6 +597,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Container handling at a Malaysian port stutters after operational technology anomalies. Manual mode. Queues at anchor.',
         weight: 2,
+        dynamics: [{ metricBelow: { maritimeControl: 45 }, multiplier: 1.8 }],
         phases: [2, 3, 4, 5],
         metricEffects: { maritimeControl: -3, financialContinuity: -1 },
         cooldown: 6,
@@ -575,6 +608,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Coordinated fraud against digital ringgit wallets triggers a panic. Losses are small; screenshots are not.',
         weight: 2,
+        dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 1.5 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -3, publicReality: -2 },
         cooldown: 6,

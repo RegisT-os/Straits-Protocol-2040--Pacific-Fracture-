@@ -67,7 +67,7 @@ export function EndingScreen({ state, onRestart }: Props) {
 
         <p className="mt-6 text-xs text-slate-500">
           {state.completedActions.length} actions taken · {state.timeline.length} timeline entries ·
-          seed {state.seed}
+          difficulty {state.difficulty} · seed {state.seed}
         </p>
 
         <div className="mt-8 text-center">

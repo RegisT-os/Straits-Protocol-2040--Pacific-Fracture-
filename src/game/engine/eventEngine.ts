@@ -1,4 +1,10 @@
-import type { EventChoice, EventDef, GameState } from '../types/gameTypes';
+import type {
+  DifficultyDef,
+  EventChoice,
+  EventDef,
+  GameState,
+  MetricDelta,
+} from '../types/gameTypes';
 import type { Rng } from './rng';
 import { EVENTS, getEvent } from '../data/events';
 import {
@@ -7,20 +13,21 @@ import {
   applyMetricDelta,
   makeTimelineEntry,
 } from './actionEngine';
+import { scheduleEffects } from './scheduleEngine';
 
 /** Chance that any event fires on a given turn. */
 const EVENT_CHANCE = 0.6;
 
+/** Weeks before a repeatable event may fire again when it sets no cooldown. */
+const DEFAULT_EVENT_COOLDOWN = 8;
+
 function eventEligible(state: GameState, event: EventDef): boolean {
   if (!event.phases.includes(state.phase)) return false;
   if (event.once && state.firedEvents.includes(event.id)) return false;
-  // Repeatable events still get a short grace period between firings.
-  if (!event.once && state.firedEvents.includes(event.id)) {
-    const lastFire = state.timeline
-      .filter((t) => t.type === 'event' && t.title === event.title)
-      .map((t) => t.week)
-      .pop();
-    if (lastFire !== undefined && state.week - lastFire < 6) return false;
+  const lastFired = state.lastEventWeek[event.id];
+  if (lastFired !== undefined) {
+    const cooldown = event.cooldown ?? DEFAULT_EVENT_COOLDOWN;
+    if (state.week - lastFired < cooldown) return false;
   }
   const cond = event.condition;
   if (cond) {
@@ -42,11 +49,25 @@ function eventEligible(state: GameState, event: EventDef): boolean {
   return true;
 }
 
+/** Scale an event's negative metric effects by difficulty; boons stay as-is. */
+function scaleSeverity(delta: MetricDelta | undefined, mult: number): MetricDelta | undefined {
+  if (!delta || mult === 1) return delta;
+  const out: MetricDelta = {};
+  for (const [key, value] of Object.entries(delta) as [keyof MetricDelta, number][]) {
+    // "Negative" means bad for the player: drops in good metrics, rises in
+    // Alignment Pressure / Mental Load.
+    const badWhenHigh = key === 'alignmentPressure' || key === 'mentalLoad';
+    const isHarm = badWhenHigh ? value > 0 : value < 0;
+    out[key] = isHarm ? Math.round(value * mult) : value;
+  }
+  return out;
+}
+
 /**
  * Maybe trigger one event this turn. Automatic effects apply immediately;
  * events with choices stay in `activeEvents` unresolved until the player picks.
  */
-export function maybeTriggerEvent(state: GameState, rng: Rng): void {
+export function maybeTriggerEvent(state: GameState, rng: Rng, difficulty: DifficultyDef): void {
   // Draw the roll unconditionally so the rng stream stays stable.
   const fires = rng.chance(EVENT_CHANCE);
   const eligible = EVENTS.filter((e) => eventEligible(state, e));
@@ -56,8 +77,9 @@ export function maybeTriggerEvent(state: GameState, rng: Rng): void {
   if (!event) return;
 
   if (!state.firedEvents.includes(event.id)) state.firedEvents.push(event.id);
+  state.lastEventWeek[event.id] = state.week;
 
-  applyMetricDelta(state, event.metricEffects);
+  applyMetricDelta(state, scaleSeverity(event.metricEffects, difficulty.eventSeverityMult));
   applyActorEffects(state, event.actorEffects);
   addFlags(state, event.flagsAdded);
 
@@ -92,6 +114,7 @@ export function resolveEventChoice(state: GameState, event: EventDef, choice: Ev
   applyMetricDelta(state, choice.metricEffects);
   applyActorEffects(state, choice.actorEffects);
   addFlags(state, choice.flagsAdded);
+  scheduleEffects(state, choice.schedules, event.title);
 
   state.timeline.push(
     makeTimelineEntry(state, {

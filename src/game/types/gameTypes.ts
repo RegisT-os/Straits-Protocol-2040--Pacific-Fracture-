@@ -32,6 +32,33 @@ export interface MetricInfo {
 }
 
 // ---------------------------------------------------------------------------
+// Difficulty
+// ---------------------------------------------------------------------------
+
+export type DifficultyId = 'analyst' | 'adviser' | 'crisis-chair';
+
+export interface DifficultyDef {
+  id: DifficultyId;
+  name: string;
+  tagline: string;
+  description: string;
+  /** Multiplier on AI actor selection weight (how often actors act on Malaysia). */
+  aiWeightMult: number;
+  /** Chance of one extra actor acting per turn. */
+  extraActorChance: number;
+  /** Scales negative metric effects of automatic events. */
+  eventSeverityMult: number;
+  /** Points restored by each passive recovery rule per week. */
+  recoveryStep: number;
+  /** Metric floor below which crisis mobilization kicks in (+1/week). */
+  mobilizationThreshold: number;
+  /** Weekly Mental Load gain while core systems are in crisis. */
+  crisisLoadStep: number;
+  /** Applied on top of base + role starting metrics. */
+  startingModifiers: MetricDelta;
+}
+
+// ---------------------------------------------------------------------------
 // Phases
 // ---------------------------------------------------------------------------
 
@@ -71,6 +98,40 @@ export interface RoleDef {
 }
 
 // ---------------------------------------------------------------------------
+// Delayed consequences (scheduled effects)
+// ---------------------------------------------------------------------------
+
+/** Data-side definition: a delayed consequence attached to an action/move/choice. */
+export interface ScheduleDef {
+  id: string;
+  /** Weeks after the scheduling week at which the effect resolves. */
+  delayWeeks: number;
+  title: string;
+  description: string;
+  metricEffects?: MetricDelta;
+  actorEffects?: ActorEffect[];
+  flagsAdded?: string[];
+  /** If set, the effect only resolves while the condition still holds. */
+  requiresFlags?: string[];
+  forbidsFlags?: string[];
+}
+
+/** State-side instance: a scheduled effect waiting in the game state. */
+export interface ScheduledEffect {
+  id: string;
+  dueWeek: number;
+  /** What set this in motion (action/event/move name), for the timeline. */
+  source: string;
+  title: string;
+  description: string;
+  metricEffects?: MetricDelta;
+  actorEffects?: ActorEffect[];
+  flagsAdded?: string[];
+  requiresFlags?: string[];
+  forbidsFlags?: string[];
+}
+
+// ---------------------------------------------------------------------------
 // AI actors
 // ---------------------------------------------------------------------------
 
@@ -92,6 +153,21 @@ export interface ActorEffect {
   aggression?: number;
 }
 
+/**
+ * A world-state condition that scales a weight when it matches.
+ * All listed conditions must hold (AND) for the multiplier to apply;
+ * several dynamics on one item multiply together.
+ */
+export interface WeightDynamic {
+  requiresFlags?: string[];
+  forbidsFlags?: string[];
+  /** Matches when every listed metric is strictly below its threshold. */
+  metricBelow?: Partial<Record<MetricKey, number>>;
+  /** Matches when every listed metric is strictly above its threshold. */
+  metricAbove?: Partial<Record<MetricKey, number>>;
+  multiplier: number;
+}
+
 export interface AiMoveDef {
   id: string;
   name: string;
@@ -109,6 +185,10 @@ export interface AiMoveDef {
   maxRelationship?: number;
   /** Weeks before this move can fire again. */
   cooldown?: number;
+  /** World-state reactions: multiply this move's weight when matched. */
+  dynamics?: WeightDynamic[];
+  /** Delayed consequences set in motion by this move. */
+  schedules?: ScheduleDef[];
 }
 
 export interface ActorDef {
@@ -125,6 +205,8 @@ export interface ActorDef {
   };
   /** Aggression added when a phase begins, keyed by phase id. */
   phaseAggression?: Partial<Record<PhaseId, number>>;
+  /** World-state reactions: multiply this actor's chance of acting when matched. */
+  dynamics?: WeightDynamic[];
   moves: AiMoveDef[];
 }
 
@@ -177,6 +259,8 @@ export interface ActionDef {
   cooldown?: number;
   /** If set, action can be taken at most once per campaign. */
   once?: boolean;
+  /** Delayed consequences set in motion by taking this action. */
+  schedules?: ScheduleDef[];
 }
 
 export interface ActionAvailability {
@@ -195,6 +279,8 @@ export interface EventChoice {
   metricEffects?: MetricDelta;
   actorEffects?: ActorEffect[];
   flagsAdded?: string[];
+  /** Delayed consequences set in motion by this choice. */
+  schedules?: ScheduleDef[];
   report: string;
 }
 
@@ -214,6 +300,8 @@ export interface EventDef {
   phases: PhaseId[];
   weight: number;
   once?: boolean;
+  /** Weeks before a repeatable event may fire again (default applies if unset). */
+  cooldown?: number;
   condition?: EventCondition;
   /** Applied immediately when the event fires (also for choice events). */
   metricEffects?: MetricDelta;
@@ -238,7 +326,8 @@ export type TimelineEntryType =
   | 'event'
   | 'system'
   | 'phase'
-  | 'risk';
+  | 'risk'
+  | 'scheduled';
 
 export interface TimelineEntry {
   id: string;
@@ -299,14 +388,21 @@ export interface GameState {
   maxWeeks: number;
   phase: PhaseId;
   selectedRole: RoleId | null;
+  difficulty: DifficultyId;
   status: GameStatus;
   metrics: Metrics;
   actors: Record<ActorId, ActorState>;
   activeEvents: ActiveEvent[];
   firedEvents: string[];
+  /** Week each event last fired, for repeat-cooldown control. */
+  lastEventWeek: Record<string, number>;
   timeline: TimelineEntry[];
   completedActions: CompletedAction[];
   actionCooldowns: Record<string, number>;
+  /** Actions selected for this turn but not yet executed (survives save/load). */
+  pendingActions: string[];
+  /** Delayed consequences waiting to resolve. */
+  scheduledEffects: ScheduledEffect[];
   flags: string[];
   ending: EndingResult | null;
 }

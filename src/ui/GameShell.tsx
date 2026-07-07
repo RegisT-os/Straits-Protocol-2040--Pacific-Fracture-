@@ -1,7 +1,8 @@
-import { useState } from 'react';
 import type { GameState } from '../game/types/gameTypes';
 import { getPhaseInfo } from '../game/data/initialState';
 import { getRole } from '../game/data/roles';
+import { getDifficulty } from '../game/data/difficulty';
+import { getActionSlots } from '../game/engine/actionEngine';
 import { getPendingEvent } from '../game/engine/eventEngine';
 import { MetricsBar } from './MetricsBar';
 import { CommandPanel } from './CommandPanel';
@@ -11,25 +12,31 @@ import { EventModal } from './EventModal';
 
 interface Props {
   state: GameState;
-  onAdvance: (actionId: string) => void;
+  onToggleAction: (actionId: string) => void;
+  onAdvance: () => void;
   onResolveEvent: (eventId: string, choiceId: string) => void;
   onSave: () => void;
   onAbandon: () => void;
   saveFlash: boolean;
 }
 
-export function GameShell({ state, onAdvance, onResolveEvent, onSave, onAbandon, saveFlash }: Props) {
-  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
-
+export function GameShell({
+  state,
+  onToggleAction,
+  onAdvance,
+  onResolveEvent,
+  onSave,
+  onAbandon,
+  saveFlash,
+}: Props) {
   const phaseInfo = getPhaseInfo(state.phase);
   const role = state.selectedRole ? getRole(state.selectedRole) : undefined;
+  const difficulty = getDifficulty(state.difficulty);
   const pendingEvent = getPendingEvent(state);
+  const slots = getActionSlots(state);
+  const selectedCount = state.pendingActions.length;
 
-  const handleAdvance = () => {
-    if (!selectedActionId || pendingEvent) return;
-    onAdvance(selectedActionId);
-    setSelectedActionId(null);
-  };
+  const canAdvance = selectedCount > 0 && !pendingEvent;
 
   return (
     <div className="flex h-screen flex-col bg-slate-950">
@@ -52,8 +59,20 @@ export function GameShell({ state, onAdvance, onResolveEvent, onSave, onAbandon,
             Phase {phaseInfo.id}: {phaseInfo.name}
           </span>
           {role && <span className="rounded bg-cyan-950 px-2 py-0.5 text-cyan-300">{role.name}</span>}
+          <span
+            className="rounded bg-amber-950 px-2 py-0.5 text-amber-400"
+            title={difficulty.description}
+          >
+            {difficulty.name}
+          </span>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <span
+            className="font-mono text-xs text-slate-400"
+            title="Action slots come from Personal Stamina ≥65 and Institutional Trust ≥65; Mental Load ≥75 removes one."
+          >
+            Actions selected: {selectedCount} / {slots}
+          </span>
           <button
             type="button"
             onClick={onSave}
@@ -74,18 +93,18 @@ export function GameShell({ state, onAdvance, onResolveEvent, onSave, onAbandon,
           </button>
           <button
             type="button"
-            disabled={!selectedActionId || !!pendingEvent}
-            onClick={handleAdvance}
+            disabled={!canAdvance}
+            onClick={onAdvance}
             title={
               pendingEvent
                 ? 'Resolve the pending event first'
-                : selectedActionId
+                : selectedCount > 0
                   ? 'Advance one week'
-                  : 'Select an action first'
+                  : 'Select at least one action first'
             }
             className="rounded-md bg-cyan-600 px-4 py-1.5 text-xs font-semibold tracking-wide text-white uppercase transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
-            {selectedActionId ? '▶ Advance Week' : 'Select an action'}
+            {selectedCount > 0 ? '▶ Advance Week' : 'Select an action'}
           </button>
         </div>
       </header>
@@ -99,8 +118,9 @@ export function GameShell({ state, onAdvance, onResolveEvent, onSave, onAbandon,
       <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[1.2fr_0.9fr_1fr]">
         <CommandPanel
           state={state}
-          selectedActionId={selectedActionId}
-          onSelect={setSelectedActionId}
+          pendingActions={state.pendingActions}
+          slots={slots}
+          onToggle={onToggleAction}
         />
         <ActorPanel state={state} />
         <TimelineFeed timeline={state.timeline} />

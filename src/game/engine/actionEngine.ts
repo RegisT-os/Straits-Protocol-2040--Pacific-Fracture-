@@ -67,6 +67,18 @@ export function makeTimelineEntry(
 }
 
 /**
+ * Action slots available this turn. Capacity comes from personal reserves
+ * and institutional capacity; overload takes it away.
+ */
+export function getActionSlots(state: GameState): number {
+  let slots = 1;
+  if (state.metrics.personalStamina >= 65) slots++;
+  if (state.metrics.institutionalTrust >= 65) slots++;
+  if (state.metrics.mentalLoad >= 75) slots--;
+  return Math.max(1, Math.min(3, slots));
+}
+
+/**
  * Availability check for the command panel. Locked actions always come with
  * a human-readable reason — they never disappear silently.
  */

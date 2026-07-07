@@ -66,9 +66,11 @@ try {
   console.log('setup screen ok');
 
   await page.click('text=Security Consultant');
+  await page.click('text=Analyst');
   await page.click('button:has-text("Start Campaign")');
   await page.waitForSelector('text=Week 1/104');
-  console.log('campaign started');
+  await page.waitForSelector('text=Actions selected:');
+  console.log('campaign started (Analyst difficulty, slot counter visible)');
 
   for (let i = 0; i < 8; i++) {
     if (await page.locator('text=Decision required').count()) {

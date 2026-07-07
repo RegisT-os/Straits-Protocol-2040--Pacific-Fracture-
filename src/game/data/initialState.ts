@@ -1,6 +1,7 @@
 import type {
   ActorId,
   ActorState,
+  DifficultyId,
   GameState,
   MetricInfo,
   Metrics,
@@ -9,6 +10,7 @@ import type {
   RoleId,
 } from '../types/gameTypes';
 import { ACTORS } from './actors';
+import { getDifficulty } from './difficulty';
 import { getRole } from './roles';
 import { clampMetrics } from '../engine/actionEngine';
 
@@ -104,13 +106,21 @@ function initialActors(): Record<ActorId, ActorState> {
   return out;
 }
 
-export function createInitialState(roleId: RoleId, seed: number): GameState {
+export function createInitialState(
+  roleId: RoleId,
+  seed: number,
+  difficultyId: DifficultyId = 'adviser',
+): GameState {
   const role = getRole(roleId);
+  const difficulty = getDifficulty(difficultyId);
   const metrics: Metrics = { ...BASE_METRICS };
   if (role) {
     for (const [key, delta] of Object.entries(role.startingModifiers)) {
       metrics[key as keyof Metrics] += delta ?? 0;
     }
+  }
+  for (const [key, delta] of Object.entries(difficulty.startingModifiers)) {
+    metrics[key as keyof Metrics] += delta ?? 0;
   }
 
   return {
@@ -122,11 +132,13 @@ export function createInitialState(roleId: RoleId, seed: number): GameState {
     maxWeeks: MAX_WEEKS,
     phase: 1,
     selectedRole: roleId,
+    difficulty: difficultyId,
     status: 'active',
     metrics: clampMetrics(metrics),
     actors: initialActors(),
     activeEvents: [],
     firedEvents: [],
+    lastEventWeek: {},
     timeline: [
       {
         id: 'tl-genesis',
@@ -148,6 +160,8 @@ export function createInitialState(roleId: RoleId, seed: number): GameState {
     ],
     completedActions: [],
     actionCooldowns: {},
+    pendingActions: [],
+    scheduledEffects: [],
     flags: [],
     ending: null,
   };
