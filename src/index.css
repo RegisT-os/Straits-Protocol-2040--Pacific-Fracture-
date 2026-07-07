@@ -1,0 +1,18 @@
+@import 'tailwindcss';
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-slate-950);
+  color: var(--color-slate-200);
+  -webkit-font-smoothing: antialiased;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* Thin scrollbars for feed panels */
+.feed-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-slate-700) transparent;
+}
