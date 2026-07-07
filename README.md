@@ -34,9 +34,28 @@ npm install
 npm run dev      # local dev server
 npm run build    # typecheck + production build
 npm run preview  # serve the production build
+npm run lint     # oxlint
 ```
 
 No backend, no database, no external APIs. Saves live in `localStorage`.
+
+## Verification checks
+
+```bash
+npm run sim                    # headless engine harness (no browser needed)
+npm run build && npm run smoke # browser smoke test against the built app
+```
+
+- **`npm run sim`** (`scripts/sim.ts`) runs full 104-week campaigns for every
+  role under a random policy and a competent "greedy" policy. It fails (exit 1)
+  if a campaign doesn't terminate with an ending, if any metric leaves 0–100,
+  if the same seed stops reproducing the same outcome, or if the greedy policy
+  survives to week 104 in fewer than half its runs (balance regression guard).
+- **`npm run smoke`** (`scripts/smoke.mjs`) serves `dist/` and drives a real
+  Chromium through role selection, 8 turns, interactive-event resolution, and a
+  save/reload round-trip, failing on any console error. It needs a Chromium
+  binary: set `CHROMIUM_PATH=/path/to/chromium` if it isn't at the default
+  `/opt/pw-browsers/chromium` (any local Chrome/Chromium works).
 
 ## Deploy on Vercel
 
@@ -71,6 +90,9 @@ src/
   ui/                      # React components, no game rules
     CampaignSetup.tsx  GameShell.tsx  MetricsBar.tsx  CommandPanel.tsx
     ActorPanel.tsx  TimelineFeed.tsx  EventModal.tsx  EndingScreen.tsx
+scripts/
+  sim.ts                   # headless engine verification harness (npm run sim)
+  smoke.mjs                # browser smoke test (npm run smoke)
 ```
 
 Determinism: the state stores `seed` and `rngCursor`; a loaded save replays the
