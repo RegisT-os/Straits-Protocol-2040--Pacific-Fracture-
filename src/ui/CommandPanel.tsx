@@ -13,6 +13,7 @@ interface Props {
 }
 
 const CATEGORY_LABEL: Record<ActionDef['category'], string> = {
+  orbital: 'Orbital',
   cyber: 'Cyber',
   diplomacy: 'Diplomacy',
   finance: 'Finance',
@@ -24,6 +25,7 @@ const CATEGORY_LABEL: Record<ActionDef['category'], string> = {
 };
 
 const CATEGORY_COLOR: Record<ActionDef['category'], string> = {
+  orbital: 'text-violet-300 border-violet-900',
   cyber: 'text-cyan-400 border-cyan-900',
   diplomacy: 'text-indigo-300 border-indigo-900',
   finance: 'text-emerald-400 border-emerald-900',

@@ -295,7 +295,11 @@ function frontDrivenCampaignStartCount(state: GameState): number {
 }
 
 function campaignRefreshCount(state: GameState): number {
-  return state.timeline.filter((entry) => entry.type === 'map' && entry.title.startsWith('Campaign intensified:')).length;
+  return state.timeline.filter(
+    (entry) =>
+      entry.type === 'map' &&
+      (entry.title.startsWith('Campaign intensified:') || entry.title.startsWith('War front campaign refresh:')),
+  ).length;
 }
 
 function reportRunDiagnostics(label: string, results: RunResult[]): void {
@@ -503,7 +507,25 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   check(cloudCampaigns.length === 1, 'high cyber front did not start cloud-banking pressure campaign');
   assertClamped(spill, 'war-front spillover');
 
-  console.log('\nWar fronts: init, status, clamping, deterministic tick, and spillover OK');
+  const pnt = createInitialState('security-consultant', 23, 'adviser');
+  pnt.warFronts['orbital-war-front'].intensity = 84;
+  pnt.warFronts['orbital-war-front'].momentum = 20;
+  tickWarFronts(pnt, new Rng(pnt.seed, pnt.rngCursor));
+  const pntCampaigns = pnt.activePressureCampaigns.filter(
+    (campaign) => campaign.templateId === 'pnt-degradation-cycle',
+  );
+  check(pntCampaigns.length === 1, 'high orbital front did not start PNT degradation campaign');
+  const firstPntIntensity = pntCampaigns[0]?.intensity ?? 0;
+  pnt.week += 9;
+  tickWarFronts(pnt, new Rng(pnt.seed, pnt.rngCursor));
+  const refreshedPntCampaigns = pnt.activePressureCampaigns.filter(
+    (campaign) => campaign.templateId === 'pnt-degradation-cycle' && campaign.status === 'active',
+  );
+  check(refreshedPntCampaigns.length === 1, 'orbital front stacked duplicate PNT campaigns');
+  check(refreshedPntCampaigns[0]?.intensity > firstPntIntensity, 'orbital front did not refresh active PNT campaign after cooldown');
+  assertClamped(pnt, 'orbital-front PNT spillover');
+
+  console.log('\nWar fronts: init, status, clamping, deterministic tick, orbital PNT campaign, and spillover OK');
 }
 
 // --- 4b: theatre pressure campaigns start, refresh, tick, complete, disrupt ---
@@ -549,6 +571,16 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
     'zero-intensity active campaign ticked instead of becoming disrupted',
   );
 
+  const pntRefresh = createInitialState('security-consultant', 18, 'adviser');
+  startPressureCampaigns(pntRefresh, [{ templateId: 'pnt-degradation-cycle', intensity: 1 }], 'sim');
+  const firstPntIntensity = pntRefresh.activePressureCampaigns[0].intensity;
+  startPressureCampaigns(pntRefresh, [{ templateId: 'pnt-degradation-cycle', intensity: 1 }], 'sim-refresh');
+  const activePnt = pntRefresh.activePressureCampaigns.filter(
+    (campaign) => campaign.templateId === 'pnt-degradation-cycle' && campaign.status === 'active',
+  );
+  check(activePnt.length === 1, 'PNT degradation campaign stacked instead of refreshing');
+  check(activePnt[0].intensity > firstPntIntensity, 'PNT degradation campaign did not refresh intensity');
+
   const counterPairs: [PressureCampaignTemplateId, string][] = [
     ['china-scs-coercion', 'deploy-drone-patrols'],
     ['china-scs-coercion', 'quiet-asean-backchannel'],
@@ -565,6 +597,11 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
     ['europe-sanctions-track', 'strict-neutrality'],
     ['europe-sanctions-track', 'engage-europe'],
     ['europe-sanctions-track', 'quiet-asean-backchannel'],
+    ['pnt-degradation-cycle', 'activate-terrestrial-navigation-backup'],
+    ['pnt-degradation-cycle', 'harden-financial-timing-backup'],
+    ['pnt-degradation-cycle', 'lease-allied-orbital-coverage'],
+    ['pnt-degradation-cycle', 'national-cyber-shield'],
+    ['pnt-degradation-cycle', 'deploy-drone-patrols'],
   ];
   for (const [templateId, actionId] of counterPairs) {
     expectCampaignCounter(templateId, actionId);

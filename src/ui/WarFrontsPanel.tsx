@@ -2,7 +2,8 @@ import type { GameState, WarFrontState } from '../game/types/gameTypes';
 import { getTheatre, NODE_MAP } from '../game/data/mapNodes';
 import { METRIC_INFO } from '../game/data/initialState';
 import { ACTIONS } from '../game/data/actions';
-import { WAR_FRONT_CAMPAIGN_HOOKS } from '../game/engine/warFrontEngine';
+import { getPressureCampaign } from '../game/data/pressureCampaigns';
+import { FRONT_CAMPAIGN_COOLDOWN_WEEKS, WAR_FRONT_CAMPAIGN_HOOKS } from '../game/engine/warFrontEngine';
 
 interface Props {
   state: GameState;
@@ -45,6 +46,12 @@ function driversSummary(front: WarFrontState): string {
   return `${momentum}${modifiers ? ` / ${modifiers}` : ''}`;
 }
 
+function pressureTrend(front: WarFrontState): string {
+  if (front.momentum >= 6) return 'rising';
+  if (front.momentum <= -6) return 'decaying';
+  return 'stable';
+}
+
 function counterplaySummary(front: WarFrontState): string {
   const counters = ACTIONS.filter((action) =>
     action.warFrontEffects?.some(
@@ -70,6 +77,43 @@ function campaignSummary(state: GameState, front: WarFrontState): string {
   const near = hooks.find((hook) => front.intensity >= hook.threshold - 6);
   if (near) return `Near: ${near.label} at INT ${near.threshold}`;
   return hooks.map((hook) => `${hook.label} at ${hook.threshold}`).join(' / ');
+}
+
+function linkedCampaignCount(state: GameState, front: WarFrontState): number {
+  const hooks = WAR_FRONT_CAMPAIGN_HOOKS.filter((hook) => hook.frontId === front.id);
+  const hookTemplates = new Set(hooks.map((hook) => hook.templateId));
+  return state.activePressureCampaigns.filter(
+    (campaign) =>
+      campaign.status === 'active' &&
+      (hookTemplates.has(campaign.templateId) || campaign.theatre === front.theatre),
+  ).length;
+}
+
+function campaignCooldownSummary(state: GameState, front: WarFrontState): string {
+  const hooks = WAR_FRONT_CAMPAIGN_HOOKS.filter((hook) => hook.frontId === front.id);
+  if (hooks.length === 0) return 'No front spawn';
+  const minimumThreshold = Math.min(...hooks.map((hook) => hook.threshold));
+  if (front.intensity < minimumThreshold) return `Arms at INT ${minimumThreshold}`;
+
+  const lastFrontCampaign = [...state.timeline].reverse().find(
+    (entry) =>
+      entry.type === 'map' &&
+      (entry.title === `War front campaign: ${front.name}` || entry.title === `War front campaign refresh: ${front.name}`),
+  );
+  const cooldownRemaining = lastFrontCampaign
+    ? Math.max(0, FRONT_CAMPAIGN_COOLDOWN_WEEKS - (state.week - lastFrontCampaign.week))
+    : 0;
+  if (cooldownRemaining > 0) return `${cooldownRemaining}w cooldown`;
+  return 'Spawn window open';
+}
+
+function counterTagSummary(front: WarFrontState): string {
+  const tags = new Set<string>();
+  for (const hook of WAR_FRONT_CAMPAIGN_HOOKS.filter((candidate) => candidate.frontId === front.id)) {
+    const campaign = getPressureCampaign(hook.templateId);
+    for (const tag of campaign?.counterActionTags ?? []) tags.add(tag);
+  }
+  return tags.size > 0 ? [...tags].slice(0, 5).join(' / ') : 'direct action only';
 }
 
 function recentShiftSummary(front: WarFrontState): string {
@@ -128,6 +172,15 @@ export function WarFrontsPanel({ state }: Props) {
             <p className="mt-1 truncate text-[10px] text-slate-500">
               <span className="font-semibold text-slate-400">Campaign risk:</span>{' '}
               {campaignSummary(state, front)}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Trend:</span>{' '}
+              {pressureTrend(front)} / {linkedCampaignCount(state, front)} linked campaign(s)
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Spawn window:</span>{' '}
+              {campaignCooldownSummary(state, front)} / <span className="font-semibold text-slate-400">Counter tags:</span>{' '}
+              {counterTagSummary(front)}
             </p>
             <p className="mt-1 truncate text-[10px] text-slate-500">
               <span className="font-semibold text-slate-400">Recent shift:</span>{' '}

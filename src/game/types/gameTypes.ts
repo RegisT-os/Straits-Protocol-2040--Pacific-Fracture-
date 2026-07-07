@@ -320,7 +320,8 @@ export type PressureCampaignTemplateId =
   | 'threat-cloud-banking-wave'
   | 'russia-grey-zone-cyber'
   | 'singapore-continuity-hedge'
-  | 'europe-sanctions-track';
+  | 'europe-sanctions-track'
+  | 'pnt-degradation-cycle';
 
 export type PressureCampaignStatus = 'active' | 'completed' | 'disrupted';
 
@@ -514,6 +515,7 @@ export interface ActorState {
 // ---------------------------------------------------------------------------
 
 export type ActionCategory =
+  | 'orbital'
   | 'cyber'
   | 'diplomacy'
   | 'finance'

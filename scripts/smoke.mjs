@@ -87,8 +87,14 @@ try {
   await page.waitForSelector('text=Malaysia impact:');
   await page.waitForSelector('text=Counterplay:');
   await page.waitForSelector('text=Campaign risk:');
+  await page.waitForSelector('text=Trend:');
+  await page.waitForSelector('text=Spawn window:');
+  await page.waitForSelector('text=Counter tags:');
   await page.waitForSelector('text=Recent shift:');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
+  await page.waitForSelector('text=Activate Terrestrial Navigation Backup');
+  await page.waitForSelector('text=Harden Financial Timing Backup');
+  await page.waitForSelector('text=Lease Allied Orbital Coverage');
   console.log('campaign started (Analyst difficulty, slot counter and war fronts visible)');
 
   // Strategic map renders; a node can be selected and shows detail.
@@ -116,33 +122,39 @@ try {
     envelope.version = 5;
     envelope.state.activePressureCampaigns = [
       {
-        id: 'smoke-china-scs-campaign',
-        templateId: 'china-scs-coercion',
-        actorId: 'china-frag',
-        title: 'South China Sea Coercion Campaign',
-        description: 'Smoke-test campaign state.',
-        theatre: 'south-china-sea',
-        targetNodeIds: ['malaysian-eez', 'luconia-shoals', 'scs-air-sea-corridor'],
+        id: 'smoke-pnt-degradation-cycle',
+        templateId: 'pnt-degradation-cycle',
+        actorId: 'threat-ecosystem',
+        title: 'PNT Degradation Cycle',
+        description: 'Smoke-test orbital campaign state.',
+        theatre: 'orbital',
+        targetNodeIds: [
+          'emergency-nav-mesh',
+          'financial-timing-link',
+          'maritime-imaging',
+          'commercial-satnet',
+          'asean-microsat',
+        ],
         startedWeek: envelope.state.week,
-        durationWeeks: 5,
+        durationWeeks: 4,
         currentWeek: 0,
-        intensity: 2,
+        intensity: 1,
         status: 'active',
-        tags: ['china', 'maritime', 'coercion', 'alignment'],
-        counterActionTags: ['maritime', 'diplomacy', 'asean', 'orbital'],
-        weeklyNodeEffects: { riskLevel: 2, stability: -1 },
-        weeklyMetricEffects: { maritimeControl: -1, alignmentPressure: 1 },
-        completionEffects: { metricEffects: { maritimeControl: -2 } },
-        disruptionEffects: { metricEffects: { maritimeControl: 2 } },
+        tags: ['orbital', 'pnt', 'satellite', 'resilience'],
+        counterActionTags: ['orbital', 'cyber', 'maritime', 'finance', 'resilience', 'neutrality'],
+        weeklyNodeEffects: { riskLevel: 1, stability: -0.35 },
+        weeklyMetricEffects: { orbitalAccess: -0.35, maritimeControl: -0.1, financialContinuity: -0.1 },
+        completionEffects: { metricEffects: { orbitalAccess: -1.5 } },
+        disruptionEffects: { metricEffects: { orbitalAccess: 2 } },
       },
     ];
     localStorage.setItem(key, JSON.stringify(envelope));
   });
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
-  await page.waitForSelector('text=South China Sea Coercion Campaign');
-  await page.waitForSelector('text=INT 2');
-  console.log('active campaigns panel renders and campaign save/load works');
+  await page.waitForSelector('text=PNT Degradation Cycle');
+  await page.waitForSelector('text=INT 1');
+  console.log('active campaigns panel renders orbital campaign and save/load works');
 
   const frontBeforeTurns = await page.evaluate(() => {
     const raw = localStorage.getItem('straits-protocol-2040-save');
@@ -192,13 +204,14 @@ try {
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
   await page.waitForSelector('text=Counterplay:');
+  await page.waitForSelector('text=Counter tags:');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
   const mapAfterLoad = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
   if ((await mapAfterLoad.locator('button:has-text("Malacca Strait")').count()) === 0) {
     throw new Error('map state missing after reload');
   }
-  if ((await page.locator('text=South China Sea Coercion Campaign').count()) === 0) {
-    throw new Error('campaign state missing after reload');
+  if ((await page.locator('text=PNT Degradation Cycle').count()) === 0) {
+    throw new Error('orbital campaign state missing after reload');
   }
   const frontsAfterLoad = await page.evaluate(() => {
     const raw = localStorage.getItem('straits-protocol-2040-save');

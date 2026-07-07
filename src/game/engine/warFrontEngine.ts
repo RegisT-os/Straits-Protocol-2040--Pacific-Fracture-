@@ -16,7 +16,7 @@ import { applyMetricDelta, clamp, makeTimelineEntry } from './actionEngine';
 import { startPressureCampaigns } from './pressureCampaignEngine';
 
 const BAD_WHEN_HIGH = new Set<MetricKey>(['alignmentPressure', 'mentalLoad']);
-const FRONT_CAMPAIGN_COOLDOWN_WEEKS = 8;
+export const FRONT_CAMPAIGN_COOLDOWN_WEEKS = 8;
 const METRIC_SHORT: Record<MetricKey, string> = {
   sovereignty: 'SOV',
   alignmentPressure: 'ALN',
@@ -37,12 +37,16 @@ export interface WarFrontCampaignHook {
   templateId: PressureCampaignTemplateId;
   threshold: number;
   label: string;
+  refreshActive?: boolean;
+  intensity?: number;
+  durationWeeks?: number;
 }
 
 export const WAR_FRONT_CAMPAIGN_HOOKS: WarFrontCampaignHook[] = [
   { frontId: 'pacific-war-front', templateId: 'china-scs-coercion', threshold: 88, label: 'China SCS coercion' },
   { frontId: 'european-pressure-front', templateId: 'europe-sanctions-track', threshold: 88, label: 'Europe sanctions track' },
   { frontId: 'european-pressure-front', templateId: 'russia-grey-zone-cyber', threshold: 92, label: 'Russian grey-zone cyber' },
+  { frontId: 'orbital-war-front', templateId: 'pnt-degradation-cycle', threshold: 82, label: 'PNT degradation cycle', refreshActive: true },
   { frontId: 'cyber-war-front', templateId: 'threat-cloud-banking-wave', threshold: 86, label: 'Cloud-banking attack wave' },
   { frontId: 'maritime-war-front', templateId: 'china-scs-coercion', threshold: 90, label: 'China SCS coercion' },
   { frontId: 'financial-war-front', templateId: 'markets-capital-flight', threshold: 94, label: 'Capital flight cycle' },
@@ -240,21 +244,25 @@ function maybeStartCampaign(
   const active = state.activePressureCampaigns.some(
     (campaign) => campaign.templateId === hook.templateId && campaign.status === 'active',
   );
-  if (active) return false;
+  if (active && !hook.refreshActive) return false;
   const recentFrontStart = state.timeline.some(
     (entry) =>
       entry.type === 'map' &&
-      entry.title === `War front campaign: ${front.name}` &&
+      (entry.title === `War front campaign: ${front.name}` || entry.title === `War front campaign refresh: ${front.name}`) &&
       state.week - entry.week < FRONT_CAMPAIGN_COOLDOWN_WEEKS,
   );
   if (recentFrontStart) return false;
   const previousTimelineLength = state.timeline.length;
-  startPressureCampaigns(state, [{ templateId: hook.templateId }], front.name);
+  startPressureCampaigns(
+    state,
+    [{ templateId: hook.templateId, intensity: hook.intensity, durationWeeks: hook.durationWeeks }],
+    front.name,
+  );
   front.lastShiftWeek = state.week;
-  front.lastShiftSummary = `Started pressure campaign: ${hook.label}.`;
+  front.lastShiftSummary = `${active ? 'Refreshed' : 'Started'} pressure campaign: ${hook.label}.`;
   for (const entry of state.timeline.slice(previousTimelineLength)) {
-    entry.title = `War front campaign: ${front.name}`;
-    entry.description = `${front.name} starts ${hook.label} at INT ${Math.round(front.intensity)}. Affects ${frontImpactText(front)}.`;
+    entry.title = active ? `War front campaign refresh: ${front.name}` : `War front campaign: ${front.name}`;
+    entry.description = `${front.name} ${active ? 'refreshes' : 'starts'} ${hook.label} at INT ${Math.round(front.intensity)}. Affects ${frontImpactText(front)}.`;
   }
   return true;
 }
@@ -309,6 +317,7 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         applyNodeDelta(state, nodeId, { riskLevel: 0.6 * scale, stability: -0.35 * scale });
       }
       applyMetricDelta(state, { orbitalAccess: -0.45 * scale, maritimeControl: -0.2 * scale });
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[3]);
       if (front.intensity >= 80 && rng.chance(0.14)) {
         addIncidents(state, [{ incidentId: 'satellite-internet-interruption', nodeId: 'commercial-satnet' }], front.name);
       }
@@ -324,7 +333,7 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         publicReality: -0.3 * scale,
         financialContinuity: -0.1 * scale,
       });
-      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[3]);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[4]);
       if (front.intensity >= 84 && rng.chance(0.12)) {
         addIncidents(state, [{ incidentId: 'cloud-credential-cascade', nodeId: 'cloud-region' }], front.name);
       }
@@ -340,7 +349,7 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         energyAssurance: -0.25 * scale,
         financialContinuity: -0.1 * scale,
       });
-      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[4]);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[5]);
       if (front.intensity >= 82 && rng.chance(0.12)) {
         addIncidents(state, [{ incidentId: 'gps-spoofing-malacca', nodeId: 'malacca-strait' }], front.name);
       }
@@ -357,8 +366,8 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         institutionalTrust: -0.1 * scale,
         alignmentPressure: 0.15 * scale,
       });
-      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[5]);
       maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[6]);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[7]);
       if (front.intensity >= 82 && rng.chance(0.12)) {
         addIncidents(state, [{ incidentId: 'capital-flight-pressure', nodeId: 'bursa-node' }], front.name);
       }

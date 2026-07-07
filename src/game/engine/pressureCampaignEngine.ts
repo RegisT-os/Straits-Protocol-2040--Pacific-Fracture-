@@ -173,14 +173,18 @@ function actionCounterTags(action: ActionDef): string[] {
   const tags = new Set<string>([action.category]);
   for (const flag of action.flagsAdded ?? []) tags.add(flag);
   if (action.id.includes('asean')) tags.add('asean');
+  if (action.id.includes('backup') || action.id.includes('harden') || action.id.includes('shield') || action.id.includes('continuity')) {
+    tags.add('resilience');
+  }
   if (action.id.includes('cert')) tags.add('cert');
   if (action.id.includes('cyber')) tags.add('cyber');
-  if (action.id.includes('drone') || action.id.includes('maritime')) tags.add('maritime');
+  if (action.id.includes('drone') || action.id.includes('maritime') || action.id.includes('navigation')) tags.add('maritime');
   if (action.id.includes('orbital')) tags.add('orbital');
   if (action.id.includes('reality')) tags.add('public-reality');
   if (action.id.includes('singapore')) tags.add('singapore');
   if (action.id.includes('neutrality') || action.id.includes('alignment')) tags.add('neutrality');
   if (action.id.includes('bnm') || action.id.includes('confidence')) tags.add('confidence');
+  if (action.id.includes('timing')) tags.add('finance');
   if (action.id.includes('europe')) tags.add('europe');
   if (action.id.includes('identity')) tags.add('identity');
   return [...tags];

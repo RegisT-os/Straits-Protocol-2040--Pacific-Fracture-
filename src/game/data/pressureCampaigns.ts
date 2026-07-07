@@ -75,6 +75,36 @@ export const PRESSURE_CAMPAIGNS: PressureCampaignDef[] = [
     flagsAddedOnStart: ['cloud-banking-wave-active'],
   },
   {
+    id: 'pnt-degradation-cycle',
+    actorId: 'threat-ecosystem',
+    title: 'PNT Degradation Cycle',
+    description:
+      'Orbital and cyber pressure erodes positioning, navigation and timing reliability across emergency routing, settlement clocks and maritime awareness.',
+    theatre: 'orbital',
+    targetNodeIds: [
+      'emergency-nav-mesh',
+      'financial-timing-link',
+      'maritime-imaging',
+      'commercial-satnet',
+      'asean-microsat',
+    ],
+    durationWeeks: 4,
+    intensity: 1,
+    tags: ['orbital', 'pnt', 'satellite', 'resilience'],
+    counterActionTags: ['orbital', 'cyber', 'maritime', 'finance', 'resilience', 'neutrality'],
+    weeklyNodeEffects: { riskLevel: 1, stability: -0.35 },
+    weeklyMetricEffects: { orbitalAccess: -0.35, maritimeControl: -0.1, financialContinuity: -0.1 },
+    completionEffects: {
+      metricEffects: { orbitalAccess: -1.5, maritimeControl: -0.75, financialContinuity: -0.75 },
+      nodeEffects: [{ nodeId: 'emergency-nav-mesh', riskLevel: 2 }],
+    },
+    disruptionEffects: {
+      metricEffects: { orbitalAccess: 2, maritimeControl: 1 },
+      nodeEffects: [{ nodeId: 'emergency-nav-mesh', riskLevel: -3, stability: 2 }],
+    },
+    flagsAddedOnStart: ['pnt-degradation-cycle-active'],
+  },
+  {
     id: 'russia-grey-zone-cyber',
     actorId: 'russia-network',
     title: 'Grey-Zone Cyber Pressure',

@@ -22,7 +22,7 @@ export const ACTIONS: ActionDef[] = [
       { nodeId: 'payment-rails', riskLevel: -4, cyberExposure: -4 },
       { nodeId: 'digital-id', riskLevel: -3 },
     ],
-    metricEffects: { cyberResilience: 8, institutionalTrust: 2, mentalLoad: 4, financialContinuity: -2 },
+    metricEffects: { cyberResilience: 8, institutionalTrust: 2, mentalLoad: 4, financialContinuity: -1 },
     warFrontEffects: [{ frontId: 'cyber-war-front', intensity: -5, momentum: -8, modifier: 'National cyber shield' }],
     cooldown: 6,
   },
@@ -49,7 +49,7 @@ export const ACTIONS: ActionDef[] = [
       'Work the informal channels — Jakarta, Bangkok, Hanoi, Manila — to keep ASEAN talking even when the formal track stalls.',
     category: 'diplomacy',
     roleRestriction: ['policy-strategist'],
-    metricEffects: { aseanCohesion: 8, institutionalTrust: 2, financialContinuity: 3, personalStamina: -3 },
+    metricEffects: { aseanCohesion: 8, institutionalTrust: 3, publicReality: 2, financialContinuity: 3, personalStamina: -3 },
     actorEffects: [{ actorId: 'indonesia-maritime', relationship: 4 }],
     warFrontEffects: [
       { frontId: 'pacific-war-front', intensity: -3, momentum: -5, modifier: 'ASEAN backchannel' },
@@ -133,6 +133,59 @@ export const ACTIONS: ActionDef[] = [
       },
     ],
     cooldown: 8,
+  },
+  {
+    id: 'activate-terrestrial-navigation-backup',
+    name: 'Activate Terrestrial Navigation Backup',
+    description:
+      'Shift critical routes onto terrestrial beacons, port pilots, eLoran fallbacks and manual PNT drills before satellite timing gets weird.',
+    category: 'orbital',
+    nodeEffects: [
+      { nodeId: 'emergency-nav-mesh', stability: 8, riskLevel: -10 },
+      { nodeId: 'malacca-strait', riskLevel: -2 },
+    ],
+    metricEffects: { orbitalAccess: 4, maritimeControl: 2, financialContinuity: -2, personalStamina: -2 },
+    warFrontEffects: [
+      { frontId: 'orbital-war-front', intensity: -4, momentum: -6, modifier: 'Terrestrial PNT fallback' },
+      { frontId: 'maritime-war-front', intensity: -1, momentum: -2, modifier: 'Navigation fallback' },
+    ],
+    cooldown: 6,
+  },
+  {
+    id: 'harden-financial-timing-backup',
+    name: 'Harden Financial Timing Backup',
+    description:
+      'Put BNM, Bursa and payment operators onto redundant timing sources with stricter failover drills and settlement-window buffers.',
+    category: 'finance',
+    nodeEffects: [
+      { nodeId: 'financial-timing-link', stability: 7, riskLevel: -9 },
+      { nodeId: 'bnm-core', stability: 2, riskLevel: -4 },
+    ],
+    metricEffects: { financialContinuity: 4, orbitalAccess: 2, institutionalTrust: -1, mentalLoad: 2 },
+    warFrontEffects: [
+      { frontId: 'orbital-war-front', intensity: -3, momentum: -4, modifier: 'Financial timing backup' },
+      { frontId: 'financial-war-front', intensity: -2, momentum: -3, modifier: 'Settlement timing buffer' },
+    ],
+    cooldown: 6,
+  },
+  {
+    id: 'lease-allied-orbital-coverage',
+    name: 'Lease Allied Orbital Coverage',
+    description:
+      'Buy short-term allied and commercial coverage for navigation, imaging and satellite internet. Fast relief, visible dependency.',
+    category: 'orbital',
+    nodeEffects: [
+      { nodeId: 'commercial-satnet', stability: 5, riskLevel: -5 },
+      { nodeId: 'maritime-imaging', stability: 5, riskLevel: -5 },
+      { nodeId: 'financial-timing-link', stability: 4, riskLevel: -4 },
+    ],
+    metricEffects: { orbitalAccess: 8, maritimeControl: 2, sovereignty: -1, alignmentPressure: 2 },
+    actorEffects: [
+      { actorId: 'us-pacom', relationship: 4 },
+      { actorId: 'china-frag', pressure: 1 },
+    ],
+    warFrontEffects: [{ frontId: 'orbital-war-front', intensity: -5, momentum: -7, modifier: 'Leased orbital coverage' }],
+    cooldown: 7,
   },
   {
     id: 'strict-neutrality',
@@ -239,9 +292,12 @@ export const ACTIONS: ActionDef[] = [
       hint: 'Surge patrols over',
     },
     roleRestriction: ['military-liaison'],
-    metricEffects: { maritimeControl: 8, energyAssurance: 2, financialContinuity: 3, alignmentPressure: 2 },
+    metricEffects: { maritimeControl: 8, energyAssurance: 2, orbitalAccess: 2, financialContinuity: 3, alignmentPressure: 2 },
     actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
-    warFrontEffects: [{ frontId: 'maritime-war-front', intensity: -4, momentum: -5, modifier: 'Maritime drone patrols' }],
+    warFrontEffects: [
+      { frontId: 'maritime-war-front', intensity: -4, momentum: -5, modifier: 'Maritime drone patrols' },
+      { frontId: 'orbital-war-front', intensity: -2, momentum: -3, modifier: 'Drone ISR fallback' },
+    ],
     risk: {
       label: 'At-sea incident with Chinese militia',
       chance: 0.25,
@@ -275,11 +331,15 @@ export const ACTIONS: ActionDef[] = [
     nodeEffects: [
       { nodeId: 'cloud-region', riskLevel: -6, cyberExposure: -4 },
       { nodeId: 'payment-rails', riskLevel: -4 },
+      { nodeId: 'financial-timing-link', riskLevel: -2 },
     ],
     roleRestriction: ['intelligence-officer', 'security-consultant'],
     metricEffects: { cyberResilience: 6, financialContinuity: 2, personalStamina: -4 },
     actorEffects: [{ actorId: 'threat-ecosystem', aggression: -8, pressure: -5 }],
-    warFrontEffects: [{ frontId: 'cyber-war-front', intensity: -4, momentum: -6, modifier: 'Threat-network takedown' }],
+    warFrontEffects: [
+      { frontId: 'cyber-war-front', intensity: -4, momentum: -6, modifier: 'Threat-network takedown' },
+      { frontId: 'orbital-war-front', intensity: -2, momentum: -3, modifier: 'PNT attack warning' },
+    ],
     risk: {
       label: 'Attribution scandal',
       chance: 0.3,
@@ -355,7 +415,7 @@ export const ACTIONS: ActionDef[] = [
     },
     nodeEffects: [{ nodeId: 'jakarta', stability: 2 }],
     roleRestriction: ['security-consultant'],
-    metricEffects: { cyberResilience: 7, aseanCohesion: 5, mentalLoad: 4 },
+    metricEffects: { cyberResilience: 7, aseanCohesion: 5, financialContinuity: 2, mentalLoad: 4 },
     actorEffects: [{ actorId: 'threat-ecosystem', pressure: -4 }],
     flagsAdded: ['asean-cert-cell'],
     warFrontEffects: [{ frontId: 'cyber-war-front', intensity: -5, momentum: -7, modifier: 'ASEAN CERT fusion' }],

@@ -9,11 +9,12 @@ pivoted hard to APAC. Taiwan and its allies are fighting a major Pacific war
 against a weakened, dangerous China. Cyberattacks are weather. Satellites are
 contested. ASEAN cannot decide which meeting room to use.
 
-This is v0.5.1: the Global War Fronts stabilization pass. Malaysia still plays
-from the ASEAN command layer, while six off-map world-war fronts progress every
-week and spill pressure into national metrics, strategic map nodes, incidents,
-and theatre pressure campaigns. v0.5.1 improves front readability, timeline
-clarity, counterplay strength, and balance without adding v0.6 systems.
+This is v0.6: the Orbital Resilience slice. Malaysia still plays from the ASEAN
+command layer, while six off-map world-war fronts progress every week and spill
+pressure into national metrics, strategic map nodes, incidents, and theatre
+pressure campaigns. v0.6 keeps the v0.5.1 readability and balance work, then
+adds one concrete orbital pressure campaign plus a few focused PNT counterplay
+actions.
 
 ## How to play
 
@@ -68,6 +69,10 @@ The War Fronts panel now explains each front with compact fields:
 - Malaysia impact: the main metrics and map nodes under pressure.
 - Counterplay: existing player actions that can reduce front pressure.
 - Campaign risk: pressure campaigns that may start when intensity gets high.
+- Trend: whether front pressure is rising, stable, or decaying.
+- Spawn window: whether a front-driven campaign is cooling down or ready.
+- Counter tags: compact tags that indicate which action families disrupt linked
+  campaigns.
 - Recent shift: the latest major front change recorded in state.
 
 ## Spillover
@@ -78,8 +83,8 @@ High-intensity fronts apply modest spillover:
   exposure, and can trigger China SCS coercion.
 - European pressure raises sanctions pressure, Russia/Europe campaign risk,
   market fear, and alignment pressure.
-- Orbital pressure hurts Orbital Access, raises orbital node risk, and can spawn
-  satellite incidents.
+- Orbital pressure hurts Orbital Access, raises orbital node risk, can spawn
+  satellite incidents, and can trigger the PNT Degradation Cycle.
 - Cyber pressure hurts Cyber Resilience and Public Reality, stresses cloud,
   identity, payment, and BNM nodes, and can trigger cloud-banking campaigns.
 - Maritime pressure hurts Maritime Control and Energy Assurance, stresses
@@ -97,14 +102,37 @@ and weekly front spillover is slightly softer, so fronts remain dangerous withou
 crowding out competent play. Front-driven campaign starts are also throttled per
 front so high-intensity fronts do not flood the timeline every few turns.
 
+## Orbital Resilience
+
+v0.6 adds one orbital pressure campaign:
+
+- PNT Degradation Cycle: pressure against emergency navigation, financial timing,
+  maritime imaging, commercial satellite internet, and the ASEAN MicroSat grid.
+
+The campaign raises orbital node risk, lowers orbital stability, and applies
+modest Orbital Access pressure. At higher intensity, its scaled weekly effects
+can also nick Maritime Control and Financial Continuity. It can be started by
+China escalation, Russian retaliation, autonomous port disruption, or a
+high-intensity Orbital War Front. Duplicate starts refresh the active campaign
+instead of stacking separate copies.
+
+New orbital counterplay actions:
+
+- Activate Terrestrial Navigation Backup: strengthens Emergency Navigation Mesh
+  and reduces Orbital War pressure, with a small continuity/stamina cost.
+- Harden Financial Timing Backup: hardens Financial Timing Satellite Link and
+  BNM continuity against timing disruption.
+- Lease Allied Orbital Coverage: quickly improves orbital coverage with a small
+  sovereignty and alignment tradeoff.
+
 ## Theatre Pressure Campaigns
 
 v0.4 pressure campaigns remain intact. Selected AI moves and high-intensity war
 fronts can start or intensify existing campaigns without duplicate stacking:
-China SCS coercion, capital flight, cloud-banking attack waves, Russian
-grey-zone cyber pressure, Singapore continuity hedging, and European sanctions
-pressure. Existing player actions disrupt campaigns through matching counter
-tags.
+China SCS coercion, capital flight, cloud-banking attack waves, PNT degradation,
+Russian grey-zone cyber pressure, Singapore continuity hedging, and European
+sanctions pressure. Existing player actions disrupt campaigns through matching
+counter tags.
 
 ## Run locally
 
@@ -131,15 +159,15 @@ their clamps; if replay determinism breaks; if scheduled effects fail; if map
 incidents or targeted actions fail; if pressure campaigns fail to start,
 refresh, complete, or disrupt; if war fronts fail to initialize, derive status,
 tick deterministically, or spill into campaigns; if save migration v1-v5 fails;
-or if the playability floor regresses. The v0.5.1 greedy floor is 14/15 Analyst,
+or if the playability floor regresses. The v0.6 greedy floor is 14/15 Analyst,
 10/15 Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
 
 `npm run smoke` serves the built app and drives Chromium through setup, map node
 selection, targeted action selection, War Fronts and Active Campaigns rendering,
-front readability text, deterministic campaign injection, 8 turns, front update
-verification, manual save, reload, and save/load preservation for map, campaign,
-and war-front state. Set `CHROMIUM_PATH` if Chromium is not at the default
-script path.
+front readability text, deterministic orbital campaign injection, 8 turns, front
+update verification, manual save, reload, and save/load preservation for map,
+campaign, and war-front state. Set `CHROMIUM_PATH` if Chromium is not at the
+default script path.
 
 ## Architecture
 
@@ -191,7 +219,7 @@ scripts/
 Determinism: the state stores `seed` and `rngCursor`; loaded saves replay the
 same future. Engines never call `Math.random`.
 
-## Known limitations (v0.5.1)
+## Known limitations (v0.6)
 
 - The map is a strategic board, not a geographic SVG map.
 - War fronts are off-map abstractions, not province warfare, force ratios, or
@@ -200,25 +228,24 @@ same future. Engines never call `Math.random`.
 - Front counterplay is explicit but still coarse; actions reduce pressure by
   front tags, not by a full negotiation or operational model.
 - There is no large tech tree.
-- There is no orbital-specific pressure campaign template yet; orbital pressure
-  uses map incidents and metric spillover.
+- Orbital resilience is a focused PNT slice, not a full space warfare model.
 - Incidents are node-local and do not spread along connections.
 - Node ownership is static, not contested.
 - Pressure campaigns do not choose targets dynamically from live map conditions.
 - Completed and disrupted campaigns remain visible for campaign memory.
 - Ending logic reads metrics and flags, not map/front state directly.
 
-## Recommended v0.6 scope
+## Recommended v0.7 scope
 
 - Add front-aware event hooks that branch on front status and campaign outcomes.
 - Add limited incident spread along connected nodes for one or two incident
   families, with sim coverage.
 - Add end-of-campaign strategic scoring for theatre risk, front trajectories,
   completed campaigns, and disrupted campaigns.
-- Consider one small orbital-specific pressure campaign only if v0.5 stays
-  balanced.
+- Consider a small set of campaign outcome events before adding more campaign
+  templates.
 - Keep geographic map rendering, full diplomacy, province warfare, and large
-  tech trees out of v0.6 unless the smaller front/event loop proves stable.
+  tech trees out of v0.7 unless the smaller front/event loop proves stable.
 
 ## Content safety
 
