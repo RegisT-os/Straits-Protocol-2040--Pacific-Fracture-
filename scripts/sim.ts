@@ -16,12 +16,32 @@
 
 import { createInitialState } from '../src/game/data/initialState';
 import { ACTIONS } from '../src/game/data/actions';
+import { ACTORS } from '../src/game/data/actors';
+import { EVENTS } from '../src/game/data/events';
+import { INCIDENTS } from '../src/game/data/incidents';
 import { MAP_NODES } from '../src/game/data/mapNodes';
 import { getActionAvailability, getActionSlots } from '../src/game/engine/actionEngine';
-import { advanceTurn, resolvePendingEvent } from '../src/game/engine/turnEngine';
+import { addIncidents, applyNodeDelta, tickMap } from '../src/game/engine/mapEngine';
+import {
+  advanceTurn,
+  resolvePendingEvent,
+  setActionTarget,
+  togglePendingAction,
+} from '../src/game/engine/turnEngine';
 import { getPendingEvent } from '../src/game/engine/eventEngine';
 import { migrateState } from '../src/game/engine/saveEngine';
-import type { DifficultyId, GameState, MapNodeId, RoleId } from '../src/game/types/gameTypes';
+import type {
+  ActionDef,
+  AiMoveDef,
+  DifficultyId,
+  EventChoice,
+  EventDef,
+  GameState,
+  IncidentSpawnDef,
+  MapNodeId,
+  NodeEffectDef,
+  RoleId,
+} from '../src/game/types/gameTypes';
 
 const ROLES: RoleId[] = [
   'security-consultant',
@@ -53,6 +73,67 @@ function assertClamped(state: GameState, label: string): void {
       check(node[key] >= 0 && node[key] <= 100, `${label}: node ${def.id}.${key} out of range (${node[key]})`);
     }
   }
+}
+
+const NODE_IDS = new Set<MapNodeId>(MAP_NODES.map((node) => node.id));
+const INCIDENT_IDS = new Set(INCIDENTS.map((incident) => incident.id));
+
+function checkNodeEffects(label: string, effects: NodeEffectDef[] | undefined): void {
+  for (const effect of effects ?? []) {
+    check(NODE_IDS.has(effect.nodeId), `${label}: invalid node effect target ${effect.nodeId}`);
+  }
+}
+
+function checkIncidentSpawns(label: string, spawns: IncidentSpawnDef[] | undefined): void {
+  for (const spawn of spawns ?? []) {
+    check(INCIDENT_IDS.has(spawn.incidentId), `${label}: invalid incident id ${spawn.incidentId}`);
+    check(NODE_IDS.has(spawn.nodeId), `${label}: invalid incident node ${spawn.nodeId}`);
+  }
+}
+
+function validateActionMapRefs(action: ActionDef): void {
+  checkNodeEffects(`action ${action.id}`, action.nodeEffects);
+  checkIncidentSpawns(`action ${action.id}`, action.incidents);
+  if (action.targeting) {
+    check(action.targeting.nodeIds.length > 0, `action ${action.id}: targeting has no node options`);
+    for (const nodeId of action.targeting.nodeIds) {
+      check(NODE_IDS.has(nodeId), `action ${action.id}: invalid targeting node ${nodeId}`);
+    }
+  }
+}
+
+function validateMoveMapRefs(actorId: string, move: AiMoveDef): void {
+  checkNodeEffects(`actor ${actorId} move ${move.id}`, move.nodeEffects);
+  checkIncidentSpawns(`actor ${actorId} move ${move.id}`, move.incidents);
+}
+
+function validateChoiceMapRefs(eventId: string, choice: EventChoice): void {
+  checkNodeEffects(`event ${eventId} choice ${choice.id}`, choice.nodeEffects);
+  checkIncidentSpawns(`event ${eventId} choice ${choice.id}`, choice.incidents);
+}
+
+function validateEventMapRefs(event: EventDef): void {
+  checkNodeEffects(`event ${event.id}`, event.nodeEffects);
+  checkIncidentSpawns(`event ${event.id}`, event.incidents);
+  for (const choice of event.choices ?? []) validateChoiceMapRefs(event.id, choice);
+}
+
+function validateDataReferences(): void {
+  check(NODE_IDS.size === MAP_NODES.length, 'duplicate map node ids');
+  check(INCIDENT_IDS.size === INCIDENTS.length, 'duplicate incident ids');
+  for (const node of MAP_NODES) {
+    for (const connected of node.connectedNodes) {
+      check(NODE_IDS.has(connected), `node ${node.id}: invalid connected node ${connected}`);
+    }
+  }
+  for (const incident of INCIDENTS) {
+    check(incident.duration > 0, `incident ${incident.id}: duration must be positive`);
+  }
+  for (const action of ACTIONS) validateActionMapRefs(action);
+  for (const actor of ACTORS) {
+    for (const move of actor.moves) validateMoveMapRefs(actor.id, move);
+  }
+  for (const event of EVENTS) validateEventMapRefs(event);
 }
 
 /** Fill required targets for a set of chosen actions (first option). */
@@ -127,6 +208,10 @@ function runGreedy(role: RoleId, seed: number, difficulty: DifficultyId): GameSt
   return state;
 }
 
+// --- 0: v0.3 data references --------------------------------------------------
+validateDataReferences();
+console.log('Data references: map nodes, incidents, targeting, AI moves, and events OK');
+
 // --- 1 & 2: campaigns terminate cleanly on every difficulty -------------------
 console.log('Random-policy campaigns (all roles × all difficulties, 2 seeds each):');
 const endingCounts = new Map<string, number>();
@@ -153,7 +238,8 @@ const a = runRandom('policy-strategist', 42, 'adviser');
 const b = runRandom('policy-strategist', 42, 'adviser');
 const deterministic =
   JSON.stringify(a.metrics) === JSON.stringify(b.metrics) &&
-  a.timeline.length === b.timeline.length &&
+  JSON.stringify(a.map) === JSON.stringify(b.map) &&
+  JSON.stringify(a.timeline) === JSON.stringify(b.timeline) &&
   a.ending?.endingId === b.ending?.endingId &&
   a.week === b.week;
 check(deterministic, 'same seed + same inputs produced different outcomes');
@@ -188,6 +274,68 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
 
 // --- 4b: map incidents fire, targeted actions work, migration restores map ----
 {
+  const clampState = createInitialState('security-consultant', 10, 'adviser');
+  applyNodeDelta(clampState, 'port-klang', {
+    stability: 1000,
+    riskLevel: -1000,
+    cyberExposure: 1000,
+  });
+  check(clampState.map.nodes['port-klang'].stability === 100, 'node stability did not clamp high');
+  check(clampState.map.nodes['port-klang'].riskLevel === 0, 'node risk did not clamp low');
+  check(clampState.map.nodes['port-klang'].cyberExposure === 100, 'node cyber exposure did not clamp high');
+
+  const incidentState = createInitialState('security-consultant', 10, 'adviser');
+  addIncidents(
+    incidentState,
+    [{ incidentId: 'gps-spoofing-malacca', nodeId: 'malacca-strait' }],
+    'sim',
+  );
+  const onsetRisk = incidentState.map.nodes['malacca-strait'].riskLevel;
+  addIncidents(
+    incidentState,
+    [{ incidentId: 'gps-spoofing-malacca', nodeId: 'malacca-strait' }],
+    'sim-refresh',
+  );
+  check(incidentState.map.nodes['malacca-strait'].activeIncidents.length === 1, 'incident refresh stacked duplicate instances');
+  check(incidentState.map.nodes['malacca-strait'].riskLevel === onsetRisk, 'incident refresh re-applied onset effects');
+  const expiresWeek = incidentState.map.nodes['malacca-strait'].activeIncidents[0].expiresWeek;
+  incidentState.week = expiresWeek - 2;
+  tickMap(incidentState);
+  incidentState.week = expiresWeek - 1;
+  tickMap(incidentState);
+  const riskBeforeExpiry = incidentState.map.nodes['malacca-strait'].riskLevel;
+  incidentState.week = expiresWeek;
+  tickMap(incidentState);
+  check(incidentState.map.nodes['malacca-strait'].activeIncidents.length === 0, 'incident did not expire on schedule');
+  check(incidentState.map.nodes['malacca-strait'].riskLevel <= riskBeforeExpiry, 'incident applied weekly effect on expiry week');
+
+  let selection = createInitialState('security-consultant', 12, 'adviser');
+  selection.pendingTargets['coordinate-asean-cert'] = 'digital-id';
+  selection = togglePendingAction(selection, 'coordinate-asean-cert');
+  check(selection.pendingActions.includes('coordinate-asean-cert'), 'targeted action was not selected');
+  check(selection.pendingTargets['coordinate-asean-cert'] === undefined, 'stale multi-target value survived selection');
+  selection = setActionTarget(selection, 'coordinate-asean-cert', 'bnm-core');
+  check(selection.pendingTargets['coordinate-asean-cert'] === 'bnm-core', 'valid selected target was not saved');
+  selection = togglePendingAction(selection, 'coordinate-asean-cert');
+  check(!selection.pendingActions.includes('coordinate-asean-cert'), 'targeted action was not deselected');
+  check(selection.pendingTargets['coordinate-asean-cert'] === undefined, 'target value survived deselection');
+
+  let multi = createInitialState('security-consultant', 13, 'adviser');
+  multi = togglePendingAction(multi, 'harden-port-klang');
+  multi = togglePendingAction(multi, 'public-reality-campaign');
+  check(multi.pendingTargets['harden-port-klang'] === 'port-klang', 'single-option target was not auto-assigned');
+  check(multi.pendingTargets['public-reality-campaign'] === undefined, 'multi-option target should wait for selection');
+  multi = setActionTarget(multi, 'public-reality-campaign', 'putrajaya');
+  multi = advanceTurn(multi, multi.pendingActions);
+  check(
+    multi.timeline.some((t) => t.type === 'map' && t.title.includes('Port Klang')),
+    'first targeted action in a multi-action turn did not apply',
+  );
+  check(
+    multi.timeline.some((t) => t.type === 'map' && t.title.includes('Putrajaya')),
+    'second targeted action in a multi-action turn did not apply',
+  );
+
   let state = createInitialState('military-liaison', 11, 'adviser');
   // Targeted action via engine path (greedy policy also exercises this).
   state = advanceTurn(state, ['deploy-drone-patrols'], { 'deploy-drone-patrols': 'malaysian-eez' });
@@ -214,7 +362,34 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   const migrated = migrateState(v2 as GameState, 2);
   check(migrated.map !== undefined && migrated.map.nodes['port-klang'] !== undefined, 'v2 migration did not initialize map state');
   check(migrated.pendingTargets !== undefined && migrated.selectedNode === null, 'v2 migration did not initialize target/selection fields');
-  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v2 save migration OK`);
+
+  const v1 = structuredClone(state) as Partial<GameState>;
+  delete v1.difficulty;
+  delete v1.pendingActions;
+  delete v1.scheduledEffects;
+  delete v1.lastEventWeek;
+  delete v1.map;
+  delete v1.selectedNode;
+  delete v1.pendingTargets;
+  const migratedV1 = migrateState(v1 as GameState, 1);
+  check(migratedV1.difficulty === 'adviser', 'v1 migration did not default difficulty');
+  check(migratedV1.map.nodes['port-klang'] !== undefined, 'v1 migration did not initialize map state');
+  check(Array.isArray(migratedV1.pendingActions), 'v1 migration did not initialize pending actions');
+
+  const corruptV3 = structuredClone(state) as GameState;
+  delete (corruptV3.map.nodes as Partial<Record<MapNodeId, unknown>>)['port-klang'];
+  corruptV3.map.nodes['malacca-strait'].riskLevel = 999;
+  corruptV3.selectedNode = 'not-a-node' as MapNodeId;
+  corruptV3.pendingActions = ['public-reality-campaign', 'missing-action'];
+  corruptV3.pendingTargets = { 'public-reality-campaign': 'not-a-node' as MapNodeId };
+  const repaired = migrateState(corruptV3, 3);
+  check(repaired.map.nodes['port-klang'] !== undefined, 'v3 repair did not restore missing map node');
+  check(repaired.map.nodes['malacca-strait'].riskLevel === 100, 'v3 repair did not clamp corrupt node value');
+  check(repaired.selectedNode === null, 'v3 repair did not clear invalid selected node');
+  check(repaired.pendingActions.length === 1, 'v3 repair did not prune invalid pending actions');
+  check(repaired.pendingTargets['public-reality-campaign'] === undefined, 'v3 repair did not clear invalid pending target');
+
+  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3 save migration OK`);
 }
 
 // --- 5: playability floor per difficulty --------------------------------------

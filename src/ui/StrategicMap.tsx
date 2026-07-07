@@ -1,4 +1,4 @@
-import type { GameState, MapNodeId, MapNodeState } from '../game/types/gameTypes';
+import type { GameState, MapNodeId, MapNodeState, TheatreId } from '../game/types/gameTypes';
 import { MAP_NODES, NODE_MAP, THEATRES } from '../game/data/mapNodes';
 import { getMapWarnings, summarizeTheatres } from '../game/engine/mapEngine';
 
@@ -7,7 +7,7 @@ interface Props {
   onSelectNode: (nodeId: MapNodeId | null) => void;
 }
 
-const THEATRE_SHORT: Record<string, string> = {
+const THEATRE_SHORT: Record<TheatreId, string> = {
   'malaysia-core': 'CORE',
   'malacca-strait': 'STRT',
   'south-china-sea': 'SCS',

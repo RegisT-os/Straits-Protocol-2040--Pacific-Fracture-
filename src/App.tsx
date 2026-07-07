@@ -64,7 +64,12 @@ export default function App() {
   }, []);
 
   const handleSelectNode = useCallback((nodeId: MapNodeId | null) => {
-    setState((prev) => (prev ? selectMapNode(prev, nodeId) : prev));
+    setState((prev) => {
+      if (!prev) return prev;
+      const next = selectMapNode(prev, nodeId);
+      saveGame(next);
+      return next;
+    });
   }, []);
 
   const handleAdvance = useCallback(() => {

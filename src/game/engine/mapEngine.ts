@@ -8,7 +8,7 @@ import type {
   NodeEffectDef,
   TheatreId,
 } from '../types/gameTypes';
-import { MAP_NODES, NODE_MAP } from '../data/mapNodes';
+import { MAP_NODES, NODE_MAP, THEATRES } from '../data/mapNodes';
 import { getIncident } from '../data/incidents';
 import { clamp, makeTimelineEntry } from './actionEngine';
 
@@ -18,9 +18,9 @@ export function createInitialMap(): MapState {
   for (const def of MAP_NODES) {
     nodes[def.id] = {
       id: def.id,
-      stability: def.initial.stability,
-      riskLevel: def.initial.riskLevel,
-      cyberExposure: def.initial.cyberExposure,
+      stability: clamp(def.initial.stability),
+      riskLevel: clamp(def.initial.riskLevel),
+      cyberExposure: clamp(def.initial.cyberExposure),
       activeIncidents: [],
     };
   }
@@ -91,22 +91,18 @@ export function addIncidents(
  */
 export function tickMap(state: GameState): void {
   for (const def of MAP_NODES) {
-    const node = state.map.nodes[def.id];
+    let node = state.map.nodes[def.id];
     if (!node) continue;
 
-    // Active incidents grind the node.
-    for (const incident of node.activeIncidents) {
-      const template = getIncident(incident.incidentId);
-      if (template?.weekly) applyNodeDelta(state, def.id, template.weekly);
-    }
-
-    // Expiry.
+    // Expire first so incidents do not apply an extra weekly effect on their
+    // clearing week.
     const expired = node.activeIncidents.filter((i) => i.expiresWeek <= state.week);
     if (expired.length > 0) {
-      state.map.nodes[def.id] = {
-        ...state.map.nodes[def.id],
+      node = {
+        ...node,
         activeIncidents: node.activeIncidents.filter((i) => i.expiresWeek > state.week),
       };
+      state.map.nodes[def.id] = node;
       for (const incident of expired) {
         state.timeline.push(
           makeTimelineEntry(state, {
@@ -116,6 +112,12 @@ export function tickMap(state: GameState): void {
           }),
         );
       }
+    }
+
+    // Active incidents grind the node.
+    for (const incident of node.activeIncidents) {
+      const template = getIncident(incident.incidentId);
+      if (template?.weekly) applyNodeDelta(state, def.id, template.weekly);
     }
 
     // Natural recovery when nothing is actively burning.
@@ -140,10 +142,13 @@ export interface TheatreSummary {
 
 export function summarizeTheatres(state: GameState): Record<TheatreId, TheatreSummary> {
   const acc = {} as Record<TheatreId, { risk: number; stab: number; n: number; inc: number }>;
+  for (const theatre of THEATRES) {
+    acc[theatre.id] = { risk: 0, stab: 0, n: 0, inc: 0 };
+  }
   for (const def of MAP_NODES) {
     const node = state.map.nodes[def.id];
     if (!node) continue;
-    const bucket = (acc[def.theatre] ??= { risk: 0, stab: 0, n: 0, inc: 0 });
+    const bucket = acc[def.theatre];
     bucket.risk += node.riskLevel;
     bucket.stab += node.stability;
     bucket.inc += node.activeIncidents.length;
@@ -153,8 +158,8 @@ export function summarizeTheatres(state: GameState): Record<TheatreId, TheatreSu
   for (const [theatre, b] of Object.entries(acc) as [TheatreId, (typeof acc)[TheatreId]][]) {
     out[theatre] = {
       theatre,
-      avgRisk: Math.round(b.risk / b.n),
-      avgStability: Math.round(b.stab / b.n),
+      avgRisk: b.n > 0 ? Math.round(b.risk / b.n) : 0,
+      avgStability: b.n > 0 ? Math.round(b.stab / b.n) : 0,
       incidentCount: b.inc,
     };
   }

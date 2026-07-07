@@ -207,9 +207,11 @@ export function togglePendingAction(state: GameState, actionId: string): GameSta
     next.pendingActions.splice(idx, 1);
     delete next.pendingTargets[actionId];
   } else if (next.pendingActions.length < getActionSlots(next)) {
-    next.pendingActions.push(actionId);
-    // Single-option targeting is auto-assigned; multi-option waits for the player.
     const action = getAction(actionId);
+    if (!action || !getActionAvailability(next, action).available) return state;
+    next.pendingActions.push(actionId);
+    delete next.pendingTargets[actionId];
+    // Single-option targeting is auto-assigned; multi-option waits for the player.
     if (action?.targeting && action.targeting.nodeIds.length === 1) {
       next.pendingTargets[actionId] = action.targeting.nodeIds[0];
     }
@@ -221,6 +223,7 @@ export function togglePendingAction(state: GameState, actionId: string): GameSta
 export function setActionTarget(state: GameState, actionId: string, nodeId: MapNodeId): GameState {
   const action = getAction(actionId);
   if (!action?.targeting || !action.targeting.nodeIds.includes(nodeId)) return state;
+  if (!state.pendingActions.includes(actionId)) return state;
   const next = cloneState(state);
   next.pendingTargets[actionId] = nodeId;
   return next;
@@ -228,6 +231,7 @@ export function setActionTarget(state: GameState, actionId: string, nodeId: MapN
 
 /** Select a node for inspection in the map UI. */
 export function selectMapNode(state: GameState, nodeId: MapNodeId | null): GameState {
+  if (nodeId && !NODE_MAP[nodeId]) return state;
   const next = cloneState(state);
   next.selectedNode = nodeId;
   return next;

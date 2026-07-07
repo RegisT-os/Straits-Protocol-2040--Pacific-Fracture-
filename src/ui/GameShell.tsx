@@ -45,7 +45,8 @@ export function GameShell({
   // Every pending targeted action must have a target before the week can advance.
   const missingTarget = state.pendingActions.some((id) => {
     const action = getAction(id);
-    return action?.targeting && !state.pendingTargets[id];
+    const target = state.pendingTargets[id];
+    return action?.targeting && (!target || !action.targeting.nodeIds.includes(target));
   });
   const canAdvance = selectedCount > 0 && !pendingEvent && !missingTarget;
 

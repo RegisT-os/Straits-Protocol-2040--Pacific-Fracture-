@@ -60,6 +60,9 @@ export function CommandPanel({ state, pendingActions, slots, onToggle, onSetTarg
           const selected = pendingActions.includes(action.id);
           const blocked = !selected && slotsFull;
           const chips = deltaChips(action.metricEffects);
+          const selectedTarget =
+            action.targeting?.nodeIds.find((nodeId) => nodeId === state.pendingTargets[action.id]) ?? '';
+          const targetSelectId = `target-${action.id}`;
           return (
             <div key={action.id}>
             <button
@@ -119,15 +122,16 @@ export function CommandPanel({ state, pendingActions, slots, onToggle, onSetTarg
             </button>
             {selected && action.targeting && (
               <div className="rounded-b-md border border-t-0 border-cyan-500 bg-cyan-950/30 px-3 py-2">
-                <label className="font-mono text-[10px] text-amber-400 uppercase">
+                <label htmlFor={targetSelectId} className="font-mono text-[10px] text-amber-400 uppercase">
                   {action.targeting.hint}{' '}
                 </label>
                 <select
-                  value={state.pendingTargets[action.id] ?? ''}
+                  id={targetSelectId}
+                  value={selectedTarget}
                   onChange={(e) => onSetTarget(action.id, e.target.value as MapNodeId)}
                   className="ml-1 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-200"
                 >
-                  {!state.pendingTargets[action.id] && <option value="">— pick a target —</option>}
+                  {!selectedTarget && <option value="">— pick a target —</option>}
                   {action.targeting.nodeIds.map((nodeId) => (
                     <option key={nodeId} value={nodeId}>
                       {NODE_MAP[nodeId].name}

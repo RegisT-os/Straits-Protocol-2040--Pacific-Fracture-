@@ -1,4 +1,8 @@
-import type { GameState } from '../types/gameTypes';
+import type { GameState, MapIncident, MapNodeId, MapNodeState } from '../types/gameTypes';
+import { getAction } from '../data/actions';
+import { getIncident } from '../data/incidents';
+import { MAP_NODES, NODE_MAP } from '../data/mapNodes';
+import { getActionSlots } from './actionEngine';
 import { createInitialMap } from './mapEngine';
 
 const SAVE_KEY = 'straits-protocol-2040-save';
@@ -29,6 +33,99 @@ function isValidState(state: unknown): state is GameState {
   );
 }
 
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isMapNodeId(value: unknown): value is MapNodeId {
+  return typeof value === 'string' && value in NODE_MAP;
+}
+
+function clampNodeValue(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(value * 100) / 100));
+}
+
+function normalizeIncident(raw: unknown, fallbackWeek: number): MapIncident | null {
+  if (!isObject(raw) || typeof raw.incidentId !== 'string') return null;
+  const template = getIncident(raw.incidentId);
+  if (!template) return null;
+  const startedWeek =
+    typeof raw.startedWeek === 'number' && Number.isFinite(raw.startedWeek)
+      ? raw.startedWeek
+      : fallbackWeek;
+  const expiresWeek =
+    typeof raw.expiresWeek === 'number' && Number.isFinite(raw.expiresWeek)
+      ? raw.expiresWeek
+      : startedWeek + template.duration;
+  if (expiresWeek <= startedWeek) return null;
+  return {
+    id: typeof raw.id === 'string' ? raw.id : `${template.id}-restored-w${startedWeek}`,
+    incidentId: template.id,
+    title: typeof raw.title === 'string' ? raw.title : template.title,
+    severity: template.severity,
+    source: typeof raw.source === 'string' ? raw.source : 'Saved campaign',
+    startedWeek,
+    expiresWeek,
+    tags: Array.isArray(raw.tags) && raw.tags.every((tag) => typeof tag === 'string')
+      ? raw.tags
+      : template.tags,
+  };
+}
+
+function normalizeMapState(state: GameState): void {
+  const fresh = createInitialMap();
+  const savedNodes: Record<string, unknown> = isObject(state.map?.nodes)
+    ? state.map.nodes
+    : {};
+  const nodes = {} as Record<MapNodeId, MapNodeState>;
+
+  for (const def of MAP_NODES) {
+    const fallback = fresh.nodes[def.id];
+    const rawSaved = savedNodes[def.id];
+    const saved: Record<string, unknown> = isObject(rawSaved) ? rawSaved : {};
+    const rawIncidents: unknown[] = Array.isArray(saved.activeIncidents) ? saved.activeIncidents : [];
+    nodes[def.id] = {
+      id: def.id,
+      stability: clampNodeValue(saved.stability, fallback.stability),
+      riskLevel: clampNodeValue(saved.riskLevel, fallback.riskLevel),
+      cyberExposure: clampNodeValue(saved.cyberExposure, fallback.cyberExposure),
+      activeIncidents: rawIncidents
+        .map((incident) => normalizeIncident(incident, state.week))
+        .filter((incident): incident is MapIncident => incident !== null),
+    };
+  }
+
+  state.map = { nodes };
+}
+
+function normalizeSelectionState(state: GameState): void {
+  state.selectedNode = isMapNodeId(state.selectedNode) ? state.selectedNode : null;
+
+  const rawPendingActions = Array.isArray(state.pendingActions) ? state.pendingActions : [];
+  const pendingActions: string[] = [];
+  for (const actionId of rawPendingActions) {
+    if (typeof actionId !== 'string' || pendingActions.includes(actionId)) continue;
+    if (!getAction(actionId)) continue;
+    pendingActions.push(actionId);
+  }
+  state.pendingActions = pendingActions.slice(0, getActionSlots(state));
+
+  const rawTargets = isObject(state.pendingTargets) ? state.pendingTargets : {};
+  const pendingTargets: GameState['pendingTargets'] = {};
+  for (const actionId of state.pendingActions) {
+    const action = getAction(actionId);
+    if (!action?.targeting) continue;
+    const rawTarget = rawTargets[actionId];
+    if (isMapNodeId(rawTarget) && action.targeting.nodeIds.includes(rawTarget)) {
+      pendingTargets[actionId] = rawTarget;
+    } else if (action.targeting.nodeIds.length === 1) {
+      pendingTargets[actionId] = action.targeting.nodeIds[0];
+    }
+  }
+  state.pendingTargets = pendingTargets;
+}
+
 export function saveGame(state: GameState): boolean {
   try {
     const envelope: SaveEnvelope = {
@@ -57,6 +154,15 @@ export function migrateState(state: GameState, version: number): GameState {
     state.selectedNode ??= null;
     state.pendingTargets ??= {};
   }
+  state.pendingActions ??= [];
+  state.pendingTargets ??= {};
+  state.scheduledEffects ??= [];
+  state.lastEventWeek ??= {};
+  state.rngCursor ??= 0;
+  state.turn ??= state.week;
+  state.map ??= createInitialMap();
+  normalizeMapState(state);
+  normalizeSelectionState(state);
   return state;
 }
 

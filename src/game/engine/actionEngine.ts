@@ -52,14 +52,12 @@ export function addFlags(state: GameState, flags: string[] | undefined): void {
   }
 }
 
-let timelineCounter = 0;
 export function makeTimelineEntry(
   state: GameState,
   entry: Omit<TimelineEntry, 'id' | 'week' | 'phase'>,
 ): TimelineEntry {
-  timelineCounter++;
   return {
-    id: `tl-${state.week}-${state.timeline.length}-${timelineCounter}`,
+    id: `tl-${state.week}-${state.timeline.length}-${entry.type}`,
     week: state.week,
     phase: state.phase,
     ...entry,

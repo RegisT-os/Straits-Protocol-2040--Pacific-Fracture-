@@ -16,6 +16,7 @@
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright-core';
 
 const PORT = 4173;
@@ -33,7 +34,13 @@ if (!existsSync(new URL('../dist/index.html', import.meta.url))) {
   process.exit(1);
 }
 
-const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort'], {
+const viteCli = fileURLToPath(new URL('../node_modules/vite/bin/vite.js', import.meta.url));
+if (!existsSync(viteCli)) {
+  console.error('Vite CLI not found — run `npm install` first.');
+  process.exit(1);
+}
+
+const server = spawn(process.execPath, [viteCli, 'preview', '--port', String(PORT), '--strictPort'], {
   stdio: 'ignore',
   detached: false,
 });
