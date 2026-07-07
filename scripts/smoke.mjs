@@ -11,8 +11,10 @@
 // Flow: serve dist/ via `vite preview`, then in a real browser:
 // pick a role + difficulty, start a campaign, verify the strategic map
 // (node selection + detail), fire a map-targeted action with a chosen
-// target, play 8 turns (resolving interactive events), save, reload,
-// load the save, verify map state survived, and assert zero console errors.
+// target, verify the Active Campaigns panel, inject a deterministic pressure
+// campaign, play 8 turns (resolving interactive events), save, reload,
+// load the save, verify map/campaign state survived, and assert zero console
+// errors.
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -79,6 +81,7 @@ try {
   await page.click('button:has-text("Start Campaign")');
   await page.waitForSelector('text=Week 1/104');
   await page.waitForSelector('text=Actions selected:');
+  await page.waitForSelector('h2:has-text("Active Campaigns")');
   console.log('campaign started (Analyst difficulty, slot counter visible)');
 
   // Strategic map renders; a node can be selected and shows detail.
@@ -97,6 +100,42 @@ try {
   const targetedEntry = await page.locator('text=Coordinate ASEAN CERT Fusion Cell — BNM Continuity Core').count();
   if (targetedEntry === 0) throw new Error('targeted action did not appear in timeline with its node');
   console.log('targeted action applied at chosen node');
+
+  await page.evaluate(() => {
+    const key = 'straits-protocol-2040-save';
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('save missing before campaign injection');
+    const envelope = JSON.parse(raw);
+    envelope.version = 4;
+    envelope.state.activePressureCampaigns = [
+      {
+        id: 'smoke-china-scs-campaign',
+        templateId: 'china-scs-coercion',
+        actorId: 'china-frag',
+        title: 'South China Sea Coercion Campaign',
+        description: 'Smoke-test campaign state.',
+        theatre: 'south-china-sea',
+        targetNodeIds: ['malaysian-eez', 'luconia-shoals', 'scs-air-sea-corridor'],
+        startedWeek: envelope.state.week,
+        durationWeeks: 5,
+        currentWeek: 0,
+        intensity: 2,
+        status: 'active',
+        tags: ['china', 'maritime', 'coercion', 'alignment'],
+        counterActionTags: ['maritime', 'diplomacy', 'asean', 'orbital'],
+        weeklyNodeEffects: { riskLevel: 2, stability: -1 },
+        weeklyMetricEffects: { maritimeControl: -1, alignmentPressure: 1 },
+        completionEffects: { metricEffects: { maritimeControl: -2 } },
+        disruptionEffects: { metricEffects: { maritimeControl: 2 } },
+      },
+    ];
+    localStorage.setItem(key, JSON.stringify(envelope));
+  });
+  await page.reload();
+  await page.click('button:has-text("Load saved campaign")');
+  await page.waitForSelector('text=South China Sea Coercion Campaign');
+  await page.waitForSelector('text=INT 2');
+  console.log('active campaigns panel renders and campaign save/load works');
 
   for (let i = 0; i < 7; i++) {
     if (await page.locator('text=Decision required').count()) {
@@ -123,11 +162,15 @@ try {
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=Week 9/104');
   await page.waitForSelector('h2:has-text("Strategic Map")');
+  await page.waitForSelector('h2:has-text("Active Campaigns")');
   const mapAfterLoad = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
   if ((await mapAfterLoad.locator('button:has-text("Malacca Strait")').count()) === 0) {
     throw new Error('map state missing after reload');
   }
-  console.log('save/load round-trip ok — map state survived');
+  if ((await page.locator('text=South China Sea Coercion Campaign').count()) === 0) {
+    throw new Error('campaign state missing after reload');
+  }
+  console.log('save/load round-trip ok - map and campaign state survived');
 
   if (errors.length) throw new Error(`console errors:\n${errors.join('\n')}`);
   console.log('no console errors');

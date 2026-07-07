@@ -166,6 +166,7 @@ export function createInitialState(
     map: createInitialMap(),
     selectedNode: null,
     scheduledEffects: [],
+    activePressureCampaigns: [],
     flags: [],
     ending: null,
   };

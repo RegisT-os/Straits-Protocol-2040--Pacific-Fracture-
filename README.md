@@ -9,12 +9,11 @@ anyone's client state.
 > weakened, dangerous China. Cyberattacks are weather. Satellites are contested.
 > ASEAN cannot decide which meeting room to use.
 
-This is **v0.3** — the strategic map pass. On top of the v0.2 gameplay-depth
-systems (action slots, difficulty, delayed consequences, dynamic AI), the game
-now has a node-based strategic map: 35 nodes across 7 theatres, map incidents,
-map-targeted actions, AI moves that land on real infrastructure, and map
-pressure that feeds back into the national metrics — still turn-based,
-data-driven, deterministically seeded, and verified.
+This is **v0.4** -- the theatre pressure campaigns pass. On top of the v0.3
+strategic map, selected AI moves can now start multi-week campaigns against
+theatres and map nodes. Campaigns apply modest weekly pressure, complete if left
+alone, and can be disrupted by existing player actions with matching counter
+tags -- still turn-based, data-driven, deterministically seeded, and verified.
 
 ## How to play
 
@@ -55,6 +54,16 @@ data-driven, deterministically seeded, and verified.
   node instability hits Energy Assurance, regional instability hits ASEAN
   Cohesion, domestic instability hits Institutional Trust. Modest, legible
   thresholds — tension, not random death.
+- **Theatre pressure campaigns**: selected AI moves can start one of six
+  multi-week campaigns: China SCS coercion, capital flight, cloud-banking attack
+  waves, Russian grey-zone cyber pressure, Singapore continuity hedging, and
+  European sanctions pressure. Active campaigns apply modest weekly node and
+  metric pressure, then complete if left unchecked.
+- **Campaign counterplay**: existing player actions disrupt campaigns when
+  their category or tags match the campaign's counter tags. Maritime patrols,
+  ASEAN backchannels, CERT fusion, cyber shields, BNM confidence work,
+  Singapore continuity channels, strict neutrality, Europe engagement, and
+  public reality campaigns all have targeted uses against pressure campaigns.
 - Every strong action has tradeoffs. US help costs sovereignty. Condemning Russia
   invites retaliation. Neutrality annoys everyone.
 - The game ends early if Financial Continuity, Public Reality, Sovereignty, or
@@ -87,13 +96,16 @@ npm run build && npm run smoke # browser smoke test against the built app
   reproducing the same outcome, if scheduled effects fail to queue/resolve,
   if map node values leave 0–100, if incidents fail to fire, if targeted
   actions don't land on their node, if v2 save migration doesn't initialize
-  map state, or if the playability floor regresses (greedy must reach week
+  map state, if theatre pressure campaigns fail to start/refresh/tick/
+  complete/disrupt, if v4 campaign save repair fails, or if the playability
+  floor regresses (greedy must reach week
   104 in ≥70% of Analyst runs, ≥50% of Adviser runs, and at least once on
   Crisis Chair).
 - **`npm run smoke`** (`scripts/smoke.mjs`) serves `dist/` and drives a real
   Chromium through role selection, map node selection + detail, a targeted
-  action with a chosen node, 8 turns, interactive-event resolution, and a
-  save/reload round-trip that must preserve map state, failing on any console
+  action with a chosen node, Active Campaigns panel rendering, deterministic
+  campaign save/load, 8 turns, interactive-event resolution, and a save/reload
+  round-trip that must preserve map and campaign state, failing on any console
   error. It needs a Chromium
   binary: set `CHROMIUM_PATH=/path/to/chromium` if it isn't at the default
   `/opt/pw-browsers/chromium` (any local Chrome/Chromium works).
@@ -121,6 +133,7 @@ src/
       difficulty.ts        # 3 difficulty levels (AI pressure, severity, recovery)
       mapNodes.ts          # 35 strategic map nodes across 7 theatres
       incidents.ts         # map incident templates
+      pressureCampaigns.ts # 6 theatre pressure campaign templates
       endings.ts           # 8 endings
       initialState.ts      # metrics, phases, starting state factory
     engine/                # pure functions over GameState, no React
@@ -130,12 +143,14 @@ src/
       eventEngine.ts       # event triggering, severity scaling, repeat control
       scheduleEngine.ts    # delayed consequences (queue + resolution)
       mapEngine.ts         # node deltas, incidents, theatre summaries, map->metric pressure
+      pressureCampaignEngine.ts # multi-week AI pressure campaigns + counterplay
       actionEngine.ts      # action availability, slots, effects, risk rolls
       endingEngine.ts      # collapse checks + final evaluation
       saveEngine.ts        # versioned localStorage save/load
   ui/                      # React components, no game rules
     CampaignSetup.tsx  GameShell.tsx  MetricsBar.tsx  CommandPanel.tsx
-    StrategicMap.tsx  ActorPanel.tsx  TimelineFeed.tsx  EventModal.tsx
+    StrategicMap.tsx  ActorPanel.tsx  ActiveCampaignsPanel.tsx
+    TimelineFeed.tsx  EventModal.tsx
     EndingScreen.tsx
 scripts/
   sim.ts                   # headless engine verification harness (npm run sim)
@@ -150,21 +165,28 @@ exact same future. Engines never call `Math.random`.
 All cyber content is abstract, fictional game language — no exploit code, no
 attack techniques, no real targets, no real persons.
 
-## Known limitations (v0.3)
+## Known limitations (v0.4)
 
 - The map is a strategic board (theatre grid), not a geographic SVG map yet.
 - Only six actions are map-targeted; the rest affect fixed nodes or none.
 - Incidents are node-local — they do not spread along connections.
 - Node ownership/influence is a static label, not a contested value.
-- AI actors hit nodes per-move but do not pursue map-level campaigns.
+- Pressure campaigns are template-driven and theatre-scoped; they do not choose
+  targets dynamically from live map conditions yet.
+- Campaign counterplay uses action categories, flags, and simple tags; there is
+  no full diplomacy or negotiation system yet.
+- Completed/disrupted campaigns remain visible in the panel for campaign memory;
+  there is no archive/filter UI yet.
 - Delayed consequences are single-shot; no branching chains yet.
 - Ending logic reads metrics and flags, not map state directly.
 
-## Roadmap (v0.4)
+## Recommended v0.5 scope
 
-- Geographic SVG map view with node positions and connection lines.
-- Incident spread along connected nodes (cascading failures).
-- Contested node influence (Malaysia vs great-power sway per node).
-- Map-level AI campaigns (multi-week pressure on a chosen theatre).
-- Branching event chains keyed to node states.
-- End-of-campaign scoring breakdown including map stewardship.
+- Add campaign-aware event hooks: a few events that branch based on active or
+  completed pressure campaigns.
+- Add limited incident spread along connected nodes for one or two incident
+  families, with sim coverage.
+- Add end-of-campaign map stewardship scoring that summarizes theatre risk,
+  completed campaigns, and disrupted campaigns.
+- Keep geographic map rendering, full diplomacy, and large tech trees out of
+  v0.5 unless the smaller campaign/event loop proves stable.

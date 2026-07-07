@@ -20,8 +20,14 @@ import { ACTORS } from '../src/game/data/actors';
 import { EVENTS } from '../src/game/data/events';
 import { INCIDENTS } from '../src/game/data/incidents';
 import { MAP_NODES } from '../src/game/data/mapNodes';
+import { PRESSURE_CAMPAIGNS } from '../src/game/data/pressureCampaigns';
 import { getActionAvailability, getActionSlots } from '../src/game/engine/actionEngine';
 import { addIncidents, applyNodeDelta, tickMap } from '../src/game/engine/mapEngine';
+import {
+  disruptPressureCampaignsForAction,
+  startPressureCampaigns,
+  tickPressureCampaigns,
+} from '../src/game/engine/pressureCampaignEngine';
 import {
   advanceTurn,
   resolvePendingEvent,
@@ -40,6 +46,7 @@ import type {
   IncidentSpawnDef,
   MapNodeId,
   NodeEffectDef,
+  PressureCampaignStartDef,
   RoleId,
 } from '../src/game/types/gameTypes';
 
@@ -73,10 +80,21 @@ function assertClamped(state: GameState, label: string): void {
       check(node[key] >= 0 && node[key] <= 100, `${label}: node ${def.id}.${key} out of range (${node[key]})`);
     }
   }
+  for (const campaign of state.activePressureCampaigns) {
+    check(
+      campaign.intensity >= 0 && campaign.intensity <= 4,
+      `${label}: campaign ${campaign.id} intensity out of range (${campaign.intensity})`,
+    );
+    check(
+      campaign.currentWeek >= 0 && campaign.currentWeek <= campaign.durationWeeks,
+      `${label}: campaign ${campaign.id} week out of range (${campaign.currentWeek}/${campaign.durationWeeks})`,
+    );
+  }
 }
 
 const NODE_IDS = new Set<MapNodeId>(MAP_NODES.map((node) => node.id));
 const INCIDENT_IDS = new Set(INCIDENTS.map((incident) => incident.id));
+const PRESSURE_CAMPAIGN_IDS = new Set(PRESSURE_CAMPAIGNS.map((campaign) => campaign.id));
 
 function checkNodeEffects(label: string, effects: NodeEffectDef[] | undefined): void {
   for (const effect of effects ?? []) {
@@ -88,6 +106,15 @@ function checkIncidentSpawns(label: string, spawns: IncidentSpawnDef[] | undefin
   for (const spawn of spawns ?? []) {
     check(INCIDENT_IDS.has(spawn.incidentId), `${label}: invalid incident id ${spawn.incidentId}`);
     check(NODE_IDS.has(spawn.nodeId), `${label}: invalid incident node ${spawn.nodeId}`);
+  }
+}
+
+function checkPressureCampaignStarts(label: string, starts: PressureCampaignStartDef[] | undefined): void {
+  for (const start of starts ?? []) {
+    check(
+      PRESSURE_CAMPAIGN_IDS.has(start.templateId),
+      `${label}: invalid pressure campaign ${start.templateId}`,
+    );
   }
 }
 
@@ -105,16 +132,19 @@ function validateActionMapRefs(action: ActionDef): void {
 function validateMoveMapRefs(actorId: string, move: AiMoveDef): void {
   checkNodeEffects(`actor ${actorId} move ${move.id}`, move.nodeEffects);
   checkIncidentSpawns(`actor ${actorId} move ${move.id}`, move.incidents);
+  checkPressureCampaignStarts(`actor ${actorId} move ${move.id}`, move.pressureCampaigns);
 }
 
 function validateChoiceMapRefs(eventId: string, choice: EventChoice): void {
   checkNodeEffects(`event ${eventId} choice ${choice.id}`, choice.nodeEffects);
   checkIncidentSpawns(`event ${eventId} choice ${choice.id}`, choice.incidents);
+  checkPressureCampaignStarts(`event ${eventId} choice ${choice.id}`, choice.pressureCampaigns);
 }
 
 function validateEventMapRefs(event: EventDef): void {
   checkNodeEffects(`event ${event.id}`, event.nodeEffects);
   checkIncidentSpawns(`event ${event.id}`, event.incidents);
+  checkPressureCampaignStarts(`event ${event.id}`, event.pressureCampaigns);
   for (const choice of event.choices ?? []) validateChoiceMapRefs(event.id, choice);
 }
 
@@ -128,6 +158,20 @@ function validateDataReferences(): void {
   }
   for (const incident of INCIDENTS) {
     check(incident.duration > 0, `incident ${incident.id}: duration must be positive`);
+  }
+  for (const campaign of PRESSURE_CAMPAIGNS) {
+    check(campaign.durationWeeks > 0, `pressure campaign ${campaign.id}: duration must be positive`);
+    check(campaign.intensity > 0 && campaign.intensity <= 4, `pressure campaign ${campaign.id}: invalid intensity`);
+    check(
+      ACTORS.some((actor) => actor.id === campaign.actorId),
+      `pressure campaign ${campaign.id}: invalid actor ${campaign.actorId}`,
+    );
+    for (const nodeId of campaign.targetNodeIds) {
+      check(NODE_IDS.has(nodeId), `pressure campaign ${campaign.id}: invalid target node ${nodeId}`);
+    }
+    check(campaign.counterActionTags.length > 0, `pressure campaign ${campaign.id}: missing counter tags`);
+    checkNodeEffects(`pressure campaign ${campaign.id} completion`, campaign.completionEffects.nodeEffects);
+    checkNodeEffects(`pressure campaign ${campaign.id} disruption`, campaign.disruptionEffects.nodeEffects);
   }
   for (const action of ACTIONS) validateActionMapRefs(action);
   for (const actor of ACTORS) {
@@ -208,7 +252,7 @@ function runGreedy(role: RoleId, seed: number, difficulty: DifficultyId): GameSt
   return state;
 }
 
-// --- 0: v0.3 data references --------------------------------------------------
+// --- 0: v0.4 data references --------------------------------------------------
 validateDataReferences();
 console.log('Data references: map nodes, incidents, targeting, AI moves, and events OK');
 
@@ -239,6 +283,7 @@ const b = runRandom('policy-strategist', 42, 'adviser');
 const deterministic =
   JSON.stringify(a.metrics) === JSON.stringify(b.metrics) &&
   JSON.stringify(a.map) === JSON.stringify(b.map) &&
+  JSON.stringify(a.activePressureCampaigns) === JSON.stringify(b.activePressureCampaigns) &&
   JSON.stringify(a.timeline) === JSON.stringify(b.timeline) &&
   a.ending?.endingId === b.ending?.endingId &&
   a.week === b.week;
@@ -272,7 +317,42 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   );
 }
 
-// --- 4b: map incidents fire, targeted actions work, migration restores map ----
+// --- 4b: theatre pressure campaigns start, refresh, tick, complete, disrupt ---
+{
+  let state = createInitialState('security-consultant', 15, 'adviser');
+  startPressureCampaigns(state, [{ templateId: 'china-scs-coercion' }], 'sim');
+  check(state.activePressureCampaigns.length === 1, 'pressure campaign did not start');
+  const firstIntensity = state.activePressureCampaigns[0].intensity;
+  startPressureCampaigns(state, [{ templateId: 'china-scs-coercion' }], 'sim-refresh');
+  const activeChina = state.activePressureCampaigns.filter(
+    (campaign) => campaign.templateId === 'china-scs-coercion' && campaign.status === 'active',
+  );
+  check(activeChina.length === 1, 'duplicate pressure campaign stacked instead of refreshing');
+  check(activeChina[0].intensity > firstIntensity, 'duplicate pressure campaign did not intensify');
+
+  for (let i = 0; i < activeChina[0].durationWeeks; i++) {
+    tickPressureCampaigns(state);
+    assertClamped(state, `campaign tick ${i}`);
+  }
+  check(
+    state.activePressureCampaigns[0].status === 'completed',
+    'pressure campaign did not complete after its duration',
+  );
+
+  state = createInitialState('security-consultant', 16, 'adviser');
+  startPressureCampaigns(state, [{ templateId: 'threat-cloud-banking-wave', intensity: 2 }], 'sim');
+  const certAction = ACTIONS.find((action) => action.id === 'coordinate-asean-cert');
+  check(certAction !== undefined, 'expected ASEAN CERT action for campaign disruption');
+  if (certAction) disruptPressureCampaignsForAction(state, certAction);
+  check(
+    state.activePressureCampaigns[0].status === 'disrupted',
+    'matching counter action did not disrupt cloud-banking campaign',
+  );
+  assertClamped(state, 'campaign disruption');
+  console.log('\nPressure campaigns: start, refresh, completion, disruption, and clamping OK');
+}
+
+// --- 4c: map incidents fire, targeted actions work, migration restores map ----
 {
   const clampState = createInitialState('security-consultant', 10, 'adviser');
   applyNodeDelta(clampState, 'port-klang', {
@@ -359,9 +439,11 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   delete v2.map;
   delete v2.selectedNode;
   delete v2.pendingTargets;
+  delete v2.activePressureCampaigns;
   const migrated = migrateState(v2 as GameState, 2);
   check(migrated.map !== undefined && migrated.map.nodes['port-klang'] !== undefined, 'v2 migration did not initialize map state');
   check(migrated.pendingTargets !== undefined && migrated.selectedNode === null, 'v2 migration did not initialize target/selection fields');
+  check(migrated.activePressureCampaigns.length === 0, 'v2 migration did not initialize pressure campaigns');
 
   const v1 = structuredClone(state) as Partial<GameState>;
   delete v1.difficulty;
@@ -371,10 +453,12 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   delete v1.map;
   delete v1.selectedNode;
   delete v1.pendingTargets;
+  delete v1.activePressureCampaigns;
   const migratedV1 = migrateState(v1 as GameState, 1);
   check(migratedV1.difficulty === 'adviser', 'v1 migration did not default difficulty');
   check(migratedV1.map.nodes['port-klang'] !== undefined, 'v1 migration did not initialize map state');
   check(Array.isArray(migratedV1.pendingActions), 'v1 migration did not initialize pending actions');
+  check(Array.isArray(migratedV1.activePressureCampaigns), 'v1 migration did not initialize pressure campaigns');
 
   const corruptV3 = structuredClone(state) as GameState;
   delete (corruptV3.map.nodes as Partial<Record<MapNodeId, unknown>>)['port-klang'];
@@ -389,7 +473,55 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   check(repaired.pendingActions.length === 1, 'v3 repair did not prune invalid pending actions');
   check(repaired.pendingTargets['public-reality-campaign'] === undefined, 'v3 repair did not clear invalid pending target');
 
-  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3 save migration OK`);
+  const corruptV4 = structuredClone(state) as GameState;
+  corruptV4.activePressureCampaigns = [
+    {
+      id: 'bad-but-known',
+      templateId: 'china-scs-coercion',
+      actorId: 'china-frag',
+      title: 'Bad Save Campaign',
+      description: 'bad',
+      theatre: 'south-china-sea',
+      targetNodeIds: ['not-a-node' as MapNodeId],
+      startedWeek: state.week,
+      durationWeeks: 2,
+      currentWeek: 99,
+      intensity: 99,
+      status: 'active',
+      tags: [],
+      counterActionTags: [],
+      weeklyNodeEffects: {},
+      weeklyMetricEffects: {},
+      completionEffects: {},
+      disruptionEffects: {},
+    },
+    {
+      id: 'unknown-template',
+      templateId: 'missing-template' as typeof corruptV4.activePressureCampaigns[number]['templateId'],
+      actorId: 'china-frag',
+      title: 'Unknown',
+      description: 'unknown',
+      theatre: 'south-china-sea',
+      targetNodeIds: ['malaysian-eez'],
+      startedWeek: state.week,
+      durationWeeks: 1,
+      currentWeek: 0,
+      intensity: 1,
+      status: 'active',
+      tags: [],
+      counterActionTags: [],
+      weeklyNodeEffects: {},
+      weeklyMetricEffects: {},
+      completionEffects: {},
+      disruptionEffects: {},
+    },
+  ];
+  const repairedV4 = migrateState(corruptV4, 4);
+  check(repairedV4.activePressureCampaigns.length === 1, 'v4 repair did not prune unknown pressure campaign');
+  check(repairedV4.activePressureCampaigns[0].intensity === 4, 'v4 repair did not clamp pressure campaign intensity');
+  check(repairedV4.activePressureCampaigns[0].currentWeek === 2, 'v4 repair did not clamp pressure campaign week');
+
+  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3/v4 save migration OK`);
 }
 
 // --- 5: playability floor per difficulty --------------------------------------

@@ -252,6 +252,74 @@ export interface ActionTargeting {
 }
 
 // ---------------------------------------------------------------------------
+// Theatre pressure campaigns
+// ---------------------------------------------------------------------------
+
+export type PressureCampaignTemplateId =
+  | 'china-scs-coercion'
+  | 'markets-capital-flight'
+  | 'threat-cloud-banking-wave'
+  | 'russia-grey-zone-cyber'
+  | 'singapore-continuity-hedge'
+  | 'europe-sanctions-track';
+
+export type PressureCampaignStatus = 'active' | 'completed' | 'disrupted';
+
+export interface PressureCampaignOutcomeEffects {
+  metricEffects?: MetricDelta;
+  nodeEffects?: NodeEffectDef[];
+  flagsAdded?: string[];
+}
+
+export interface PressureCampaignStartDef {
+  templateId: PressureCampaignTemplateId;
+  intensity?: number;
+  durationWeeks?: number;
+}
+
+export interface PressureCampaignDef {
+  id: PressureCampaignTemplateId;
+  actorId: ActorId;
+  title: string;
+  description: string;
+  theatre: TheatreId;
+  targetNodeIds: MapNodeId[];
+  durationWeeks: number;
+  intensity: number;
+  tags: string[];
+  counterActionTags: string[];
+  weeklyNodeEffects: NodeDelta;
+  weeklyMetricEffects: MetricDelta;
+  completionEffects: PressureCampaignOutcomeEffects;
+  disruptionEffects: PressureCampaignOutcomeEffects;
+  flagsAddedOnStart?: string[];
+  flagsAddedOnCompletion?: string[];
+}
+
+export interface ActivePressureCampaign {
+  id: string;
+  templateId: PressureCampaignTemplateId;
+  actorId: ActorId;
+  title: string;
+  description: string;
+  theatre: TheatreId;
+  targetNodeIds: MapNodeId[];
+  startedWeek: number;
+  durationWeeks: number;
+  currentWeek: number;
+  intensity: number;
+  status: PressureCampaignStatus;
+  tags: string[];
+  counterActionTags: string[];
+  weeklyNodeEffects: NodeDelta;
+  weeklyMetricEffects: MetricDelta;
+  completionEffects: PressureCampaignOutcomeEffects;
+  disruptionEffects: PressureCampaignOutcomeEffects;
+  flagsAddedOnStart?: string[];
+  flagsAddedOnCompletion?: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Delayed consequences (scheduled effects)
 // ---------------------------------------------------------------------------
 
@@ -347,6 +415,8 @@ export interface AiMoveDef {
   nodeEffects?: NodeEffectDef[];
   /** Map incidents spawned when the move fires. */
   incidents?: IncidentSpawnDef[];
+  /** Theatre pressure campaigns started or intensified when the move fires. */
+  pressureCampaigns?: PressureCampaignStartDef[];
 }
 
 export interface ActorDef {
@@ -447,6 +517,7 @@ export interface EventChoice {
   schedules?: ScheduleDef[];
   nodeEffects?: NodeEffectDef[];
   incidents?: IncidentSpawnDef[];
+  pressureCampaigns?: PressureCampaignStartDef[];
   report: string;
 }
 
@@ -475,6 +546,7 @@ export interface EventDef {
   flagsAdded?: string[];
   nodeEffects?: NodeEffectDef[];
   incidents?: IncidentSpawnDef[];
+  pressureCampaigns?: PressureCampaignStartDef[];
   choices?: EventChoice[];
 }
 
@@ -578,6 +650,8 @@ export interface GameState {
   selectedNode: MapNodeId | null;
   /** Delayed consequences waiting to resolve. */
   scheduledEffects: ScheduledEffect[];
+  /** Multi-week theatre or node pressure campaigns currently tracked. */
+  activePressureCampaigns: ActivePressureCampaign[];
   flags: string[];
   ending: EndingResult | null;
 }

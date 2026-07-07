@@ -1,12 +1,20 @@
-import type { GameState, MapIncident, MapNodeId, MapNodeState } from '../types/gameTypes';
+import type {
+  ActivePressureCampaign,
+  GameState,
+  MapIncident,
+  MapNodeId,
+  MapNodeState,
+  PressureCampaignStatus,
+} from '../types/gameTypes';
 import { getAction } from '../data/actions';
 import { getIncident } from '../data/incidents';
 import { MAP_NODES, NODE_MAP } from '../data/mapNodes';
+import { getPressureCampaign } from '../data/pressureCampaigns';
 import { getActionSlots } from './actionEngine';
 import { createInitialMap } from './mapEngine';
 
 const SAVE_KEY = 'straits-protocol-2040-save';
-const SAVE_VERSION = 3;
+const SAVE_VERSION = 4;
 
 interface SaveEnvelope {
   version: number;
@@ -39,6 +47,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isMapNodeId(value: unknown): value is MapNodeId {
   return typeof value === 'string' && value in NODE_MAP;
+}
+
+function isPressureCampaignStatus(value: unknown): value is PressureCampaignStatus {
+  return value === 'active' || value === 'completed' || value === 'disrupted';
 }
 
 function clampNodeValue(value: unknown, fallback: number): number {
@@ -126,6 +138,70 @@ function normalizeSelectionState(state: GameState): void {
   state.pendingTargets = pendingTargets;
 }
 
+function normalizePressureCampaign(raw: unknown, state: GameState): ActivePressureCampaign | null {
+  if (!isObject(raw) || typeof raw.templateId !== 'string') return null;
+  const template = getPressureCampaign(raw.templateId);
+  if (!template) return null;
+  const startedWeek =
+    typeof raw.startedWeek === 'number' && Number.isFinite(raw.startedWeek)
+      ? raw.startedWeek
+      : state.week;
+  const durationWeeks =
+    typeof raw.durationWeeks === 'number' &&
+    Number.isFinite(raw.durationWeeks) &&
+    raw.durationWeeks > 0
+      ? raw.durationWeeks
+      : template.durationWeeks;
+  const currentWeek =
+    typeof raw.currentWeek === 'number' && Number.isFinite(raw.currentWeek)
+      ? Math.max(0, Math.min(durationWeeks, raw.currentWeek))
+      : 0;
+  const intensity =
+    typeof raw.intensity === 'number' && Number.isFinite(raw.intensity)
+      ? Math.max(0, Math.min(4, raw.intensity))
+      : template.intensity;
+  const rawTargets = Array.isArray(raw.targetNodeIds) ? raw.targetNodeIds : template.targetNodeIds;
+  const targetNodeIds = rawTargets.filter(isMapNodeId);
+
+  return {
+    id: typeof raw.id === 'string' ? raw.id : `${template.id}-restored-w${startedWeek}`,
+    templateId: template.id,
+    actorId: template.actorId,
+    title: typeof raw.title === 'string' ? raw.title : template.title,
+    description: typeof raw.description === 'string' ? raw.description : template.description,
+    theatre: template.theatre,
+    targetNodeIds: targetNodeIds.length > 0 ? targetNodeIds : template.targetNodeIds,
+    startedWeek,
+    durationWeeks,
+    currentWeek,
+    intensity,
+    status: isPressureCampaignStatus(raw.status) ? raw.status : 'active',
+    tags: Array.isArray(raw.tags) && raw.tags.every((tag) => typeof tag === 'string')
+      ? raw.tags
+      : template.tags,
+    counterActionTags:
+      Array.isArray(raw.counterActionTags) &&
+      raw.counterActionTags.every((tag) => typeof tag === 'string')
+        ? raw.counterActionTags
+        : template.counterActionTags,
+    weeklyNodeEffects: template.weeklyNodeEffects,
+    weeklyMetricEffects: template.weeklyMetricEffects,
+    completionEffects: template.completionEffects,
+    disruptionEffects: template.disruptionEffects,
+    flagsAddedOnStart: template.flagsAddedOnStart,
+    flagsAddedOnCompletion: template.flagsAddedOnCompletion,
+  };
+}
+
+function normalizePressureCampaigns(state: GameState): void {
+  const rawCampaigns = Array.isArray(state.activePressureCampaigns)
+    ? state.activePressureCampaigns
+    : [];
+  state.activePressureCampaigns = rawCampaigns
+    .map((campaign) => normalizePressureCampaign(campaign, state))
+    .filter((campaign): campaign is ActivePressureCampaign => campaign !== null);
+}
+
 export function saveGame(state: GameState): boolean {
   try {
     const envelope: SaveEnvelope = {
@@ -154,15 +230,20 @@ export function migrateState(state: GameState, version: number): GameState {
     state.selectedNode ??= null;
     state.pendingTargets ??= {};
   }
+  if (version < 4) {
+    state.activePressureCampaigns ??= [];
+  }
   state.pendingActions ??= [];
   state.pendingTargets ??= {};
   state.scheduledEffects ??= [];
   state.lastEventWeek ??= {};
+  state.activePressureCampaigns ??= [];
   state.rngCursor ??= 0;
   state.turn ??= state.week;
   state.map ??= createInitialMap();
   normalizeMapState(state);
   normalizeSelectionState(state);
+  normalizePressureCampaigns(state);
   return state;
 }
 

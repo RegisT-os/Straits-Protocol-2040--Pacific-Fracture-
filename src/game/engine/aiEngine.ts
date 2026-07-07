@@ -16,6 +16,7 @@ import {
 } from './actionEngine';
 import { scheduleEffects } from './scheduleEngine';
 import { addIncidents, applyNodeEffects } from './mapEngine';
+import { startPressureCampaigns } from './pressureCampaignEngine';
 
 /** How many actors act per turn, by phase (base value; rng may add one). */
 const BASE_ACTORS_PER_TURN: Record<PhaseId, number> = { 1: 2, 2: 2, 3: 3, 4: 3, 5: 3 };
@@ -107,6 +108,7 @@ export function runAiTurn(state: GameState, rng: Rng, difficulty: DifficultyDef)
     scheduleEffects(state, move.schedules, def.name);
     applyNodeEffects(state, move.nodeEffects);
     addIncidents(state, move.incidents, def.short);
+    startPressureCampaigns(state, move.pressureCampaigns, def.short);
 
     const actor = state.actors[def.id];
     state.actors[def.id] = {
