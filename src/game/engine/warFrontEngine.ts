@@ -10,11 +10,44 @@ import type {
 } from '../types/gameTypes';
 import type { Rng } from './rng';
 import { WAR_FRONT_MAP, WAR_FRONTS } from '../data/warFronts';
+import { NODE_MAP } from '../data/mapNodes';
 import { addIncidents, applyNodeDelta } from './mapEngine';
 import { applyMetricDelta, clamp, makeTimelineEntry } from './actionEngine';
 import { startPressureCampaigns } from './pressureCampaignEngine';
 
 const BAD_WHEN_HIGH = new Set<MetricKey>(['alignmentPressure', 'mentalLoad']);
+const FRONT_CAMPAIGN_COOLDOWN_WEEKS = 8;
+const METRIC_SHORT: Record<MetricKey, string> = {
+  sovereignty: 'SOV',
+  alignmentPressure: 'ALN',
+  cyberResilience: 'CYB',
+  orbitalAccess: 'ORB',
+  financialContinuity: 'FIN',
+  maritimeControl: 'MAR',
+  energyAssurance: 'NRG',
+  publicReality: 'PUB',
+  aseanCohesion: 'ASN',
+  institutionalTrust: 'INS',
+  personalStamina: 'STA',
+  mentalLoad: 'MTL',
+};
+
+export interface WarFrontCampaignHook {
+  frontId: WarFrontId;
+  templateId: PressureCampaignTemplateId;
+  threshold: number;
+  label: string;
+}
+
+export const WAR_FRONT_CAMPAIGN_HOOKS: WarFrontCampaignHook[] = [
+  { frontId: 'pacific-war-front', templateId: 'china-scs-coercion', threshold: 88, label: 'China SCS coercion' },
+  { frontId: 'european-pressure-front', templateId: 'europe-sanctions-track', threshold: 88, label: 'Europe sanctions track' },
+  { frontId: 'european-pressure-front', templateId: 'russia-grey-zone-cyber', threshold: 92, label: 'Russian grey-zone cyber' },
+  { frontId: 'cyber-war-front', templateId: 'threat-cloud-banking-wave', threshold: 86, label: 'Cloud-banking attack wave' },
+  { frontId: 'maritime-war-front', templateId: 'china-scs-coercion', threshold: 90, label: 'China SCS coercion' },
+  { frontId: 'financial-war-front', templateId: 'markets-capital-flight', threshold: 94, label: 'Capital flight cycle' },
+  { frontId: 'financial-war-front', templateId: 'singapore-continuity-hedge', threshold: 96, label: 'Singapore continuity hedge' },
+];
 
 function clampRange(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(value * 100) / 100));
@@ -51,9 +84,42 @@ export function createInitialWarFronts(startWeek = 1): WarFrontStateMap {
       status: deriveWarFrontStatus(def.intensity),
       activeModifiers: [...def.activeModifiers],
       lastShiftWeek: startWeek,
+      lastShiftSummary: 'Initial front posture.',
     };
   }
   return fronts;
+}
+
+function frontDirection(before: number, after: number): string {
+  const delta = after - before;
+  if (delta >= 1) return `rises ${Math.round(before)} -> ${Math.round(after)}`;
+  if (delta <= -1) return `falls ${Math.round(before)} -> ${Math.round(after)}`;
+  return `holds near ${Math.round(after)}`;
+}
+
+function frontImpactText(front: WarFrontState): string {
+  const metrics = front.linkedMetrics.slice(0, 3).map((metric) => METRIC_SHORT[metric]).join('/');
+  const nodes = front.linkedMapNodes.slice(0, 2).map((nodeId) => NODE_MAP[nodeId].name).join(', ');
+  return `${metrics}; ${nodes}`;
+}
+
+function recordFrontShift(
+  state: GameState,
+  front: WarFrontState,
+  title: string,
+  source: string,
+  previousIntensity: number,
+): void {
+  const direction = frontDirection(previousIntensity, front.intensity);
+  front.lastShiftWeek = state.week;
+  front.lastShiftSummary = `${source}: ${direction}; ${front.status}, ESC ${front.escalationLevel}`;
+  state.timeline.push(
+    makeTimelineEntry(state, {
+      type: 'map',
+      title,
+      description: `${front.name} ${direction}. Status: ${front.status}, escalation ${front.escalationLevel}. Affects ${frontImpactText(front)}.`,
+    }),
+  );
 }
 
 export function applyWarFrontEffects(
@@ -65,11 +131,13 @@ export function applyWarFrontEffects(
   for (const effect of effects) {
     const front = state.warFronts[effect.frontId];
     if (!front) continue;
+    const previousIntensity = front.intensity;
     const previousStatus = front.status;
     const previousEscalation = front.escalationLevel;
 
-    front.intensity = clamp(front.intensity + (effect.intensity ?? 0));
-    front.momentum = clampMomentum(front.momentum + (effect.momentum ?? 0));
+    const counterplayBoost = (effect.intensity ?? 0) < 0 || (effect.momentum ?? 0) < 0 ? 1.15 : 1;
+    front.intensity = clamp(front.intensity + (effect.intensity ?? 0) * counterplayBoost);
+    front.momentum = clampMomentum(front.momentum + (effect.momentum ?? 0) * counterplayBoost);
     front.escalationLevel = clampEscalation(front.escalationLevel + (effect.escalation ?? 0));
     front.status = deriveWarFrontStatus(front.intensity);
     if (effect.modifier && !front.activeModifiers.includes(effect.modifier)) {
@@ -77,20 +145,14 @@ export function applyWarFrontEffects(
     }
 
     if (front.status !== previousStatus || front.escalationLevel !== previousEscalation) {
-      front.lastShiftWeek = state.week;
-      state.timeline.push(
-        makeTimelineEntry(state, {
-          type: 'map',
-          title: `War front shift: ${front.name}`,
-          description: `${source} shifts ${front.name} to ${front.status} at escalation ${front.escalationLevel}.`,
-        }),
-      );
+      recordFrontShift(state, front, `War front shift: ${front.name}`, source, previousIntensity);
     }
   }
 }
 
 export function tickWarFronts(state: GameState, rng: Rng): void {
   for (const front of Object.values(state.warFronts)) {
+    const previousIntensity = front.intensity;
     const previousStatus = front.status;
     const previousEscalation = front.escalationLevel;
     const actorDrive = linkedActorDrive(state, front);
@@ -112,14 +174,7 @@ export function tickWarFronts(state: GameState, rng: Rng): void {
     front.activeModifiers = activeModifiersFor(front, actorDrive, exposureDrive);
 
     if (front.status !== previousStatus || front.escalationLevel !== previousEscalation) {
-      front.lastShiftWeek = state.week;
-      state.timeline.push(
-        makeTimelineEntry(state, {
-          type: 'map',
-          title: `War front shift: ${front.name}`,
-          description: `${front.name} is now ${front.status} at escalation ${front.escalationLevel}.`,
-        }),
-      );
+      recordFrontShift(state, front, `War front shift: ${front.name}`, 'Weekly war-front tick', previousIntensity);
     }
 
     applyFrontSpillover(state, rng, front);
@@ -170,24 +225,37 @@ function activeModifiersFor(front: WarFrontState, actorDrive: number, exposureDr
 }
 
 function spilloverScale(front: WarFrontState): number {
-  if (front.intensity >= 85) return 0.5;
-  if (front.intensity >= 70) return 0.25;
-  if (front.intensity >= 55) return 0.1;
+  if (front.intensity >= 85) return 0.28;
+  if (front.intensity >= 70) return 0.12;
+  if (front.intensity >= 55) return 0.04;
   return 0;
 }
 
 function maybeStartCampaign(
   state: GameState,
   front: WarFrontState,
-  templateId: PressureCampaignTemplateId,
-  threshold: number,
+  hook: WarFrontCampaignHook,
 ): boolean {
-  if (front.intensity < threshold) return false;
+  if (front.intensity < hook.threshold) return false;
   const active = state.activePressureCampaigns.some(
-    (campaign) => campaign.templateId === templateId && campaign.status === 'active',
+    (campaign) => campaign.templateId === hook.templateId && campaign.status === 'active',
   );
   if (active) return false;
-  startPressureCampaigns(state, [{ templateId }], front.name);
+  const recentFrontStart = state.timeline.some(
+    (entry) =>
+      entry.type === 'map' &&
+      entry.title === `War front campaign: ${front.name}` &&
+      state.week - entry.week < FRONT_CAMPAIGN_COOLDOWN_WEEKS,
+  );
+  if (recentFrontStart) return false;
+  const previousTimelineLength = state.timeline.length;
+  startPressureCampaigns(state, [{ templateId: hook.templateId }], front.name);
+  front.lastShiftWeek = state.week;
+  front.lastShiftSummary = `Started pressure campaign: ${hook.label}.`;
+  for (const entry of state.timeline.slice(previousTimelineLength)) {
+    entry.title = `War front campaign: ${front.name}`;
+    entry.description = `${front.name} starts ${hook.label} at INT ${Math.round(front.intensity)}. Affects ${frontImpactText(front)}.`;
+  }
   return true;
 }
 
@@ -198,7 +266,7 @@ function majorSpilloverTimeline(state: GameState, front: WarFrontState, descript
     makeTimelineEntry(state, {
       type: 'map',
       title: `War spillover: ${front.name}`,
-      description,
+      description: `${description} Affects ${frontImpactText(front)}.`,
     }),
   );
 }
@@ -218,7 +286,7 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         financialContinuity: -0.1 * scale,
         aseanCohesion: front.escalationLevel >= 4 ? -0.3 * scale : 0,
       });
-      maybeStartCampaign(state, front, 'china-scs-coercion', 84);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[0]);
       majorSpilloverTimeline(state, front, 'Pacific combat tempo spills into South China Sea risk and ASEAN alignment pressure.');
       break;
 
@@ -231,8 +299,8 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         financialContinuity: -0.15 * scale,
         publicReality: -0.15 * scale,
       });
-      maybeStartCampaign(state, front, 'europe-sanctions-track', 84);
-      maybeStartCampaign(state, front, 'russia-grey-zone-cyber', 90);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[1]);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[2]);
       majorSpilloverTimeline(state, front, 'Europe and Russia export sanctions pressure, market fear and cyber opportunism into Malaysia.');
       break;
 
@@ -241,7 +309,7 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         applyNodeDelta(state, nodeId, { riskLevel: 0.6 * scale, stability: -0.35 * scale });
       }
       applyMetricDelta(state, { orbitalAccess: -0.45 * scale, maritimeControl: -0.2 * scale });
-      if (front.intensity >= 80 && rng.chance(0.2)) {
+      if (front.intensity >= 80 && rng.chance(0.14)) {
         addIncidents(state, [{ incidentId: 'satellite-internet-interruption', nodeId: 'commercial-satnet' }], front.name);
       }
       majorSpilloverTimeline(state, front, 'Orbital contestation degrades PNT, satellite internet and maritime imaging reliability.');
@@ -256,8 +324,8 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         publicReality: -0.3 * scale,
         financialContinuity: -0.1 * scale,
       });
-      maybeStartCampaign(state, front, 'threat-cloud-banking-wave', 82);
-      if (front.intensity >= 84 && rng.chance(0.18)) {
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[3]);
+      if (front.intensity >= 84 && rng.chance(0.12)) {
         addIncidents(state, [{ incidentId: 'cloud-credential-cascade', nodeId: 'cloud-region' }], front.name);
       }
       majorSpilloverTimeline(state, front, 'Cyber front intensity spills into cloud, identity, payments and public reality pressure.');
@@ -272,8 +340,8 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         energyAssurance: -0.25 * scale,
         financialContinuity: -0.1 * scale,
       });
-      maybeStartCampaign(state, front, 'china-scs-coercion', 86);
-      if (front.intensity >= 82 && rng.chance(0.18)) {
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[4]);
+      if (front.intensity >= 82 && rng.chance(0.12)) {
         addIncidents(state, [{ incidentId: 'gps-spoofing-malacca', nodeId: 'malacca-strait' }], front.name);
       }
       majorSpilloverTimeline(state, front, 'Shipping conflict raises insurance, Strait risk and energy routing pressure.');
@@ -289,9 +357,9 @@ function applyFrontSpillover(state: GameState, rng: Rng, front: WarFrontState): 
         institutionalTrust: -0.1 * scale,
         alignmentPressure: 0.15 * scale,
       });
-      maybeStartCampaign(state, front, 'markets-capital-flight', 90);
-      maybeStartCampaign(state, front, 'singapore-continuity-hedge', 94);
-      if (front.intensity >= 82 && rng.chance(0.18)) {
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[5]);
+      maybeStartCampaign(state, front, WAR_FRONT_CAMPAIGN_HOOKS[6]);
+      if (front.intensity >= 82 && rng.chance(0.12)) {
         addIncidents(state, [{ incidentId: 'capital-flight-pressure', nodeId: 'bursa-node' }], front.name);
       }
       majorSpilloverTimeline(state, front, 'Financial front stress pushes capital, settlement and Singapore dependency pressure into the campaign.');

@@ -39,9 +39,9 @@ export const PRESSURE_CAMPAIGNS: PressureCampaignDef[] = [
     tags: ['markets', 'finance', 'confidence'],
     counterActionTags: ['finance', 'confidence', 'singapore'],
     weeklyNodeEffects: { riskLevel: 1.5, stability: -0.5 },
-    weeklyMetricEffects: { financialContinuity: -0.5 },
+    weeklyMetricEffects: { financialContinuity: -0.35 },
     completionEffects: {
-      metricEffects: { financialContinuity: -2, institutionalTrust: -1 },
+      metricEffects: { financialContinuity: -1.5, institutionalTrust: -1 },
       nodeEffects: [{ nodeId: 'bursa-node', riskLevel: 3 }],
     },
     disruptionEffects: {

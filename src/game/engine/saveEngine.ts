@@ -242,6 +242,10 @@ function normalizeWarFront(raw: unknown, fallback: WarFrontState): WarFrontState
       typeof saved.lastShiftWeek === 'number' && Number.isFinite(saved.lastShiftWeek)
         ? Math.max(1, Math.round(saved.lastShiftWeek))
         : fallback.lastShiftWeek,
+    lastShiftSummary:
+      typeof saved.lastShiftSummary === 'string'
+        ? saved.lastShiftSummary
+        : fallback.lastShiftSummary,
   };
 }
 

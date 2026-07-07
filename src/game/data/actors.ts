@@ -649,7 +649,7 @@ export const ACTORS: ActorDef[] = [
         incidents: [{ incidentId: 'capital-flight-pressure', nodeId: 'bnm-core' }],
         pressureCampaigns: [{ templateId: 'markets-capital-flight' }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2.5 }],
-        metricEffects: { financialContinuity: -4 },
+        metricEffects: { financialContinuity: -3.5 },
         warFrontEffects: [{ frontId: 'financial-war-front', intensity: 5, momentum: 6, modifier: 'Capital flight' }],
         cooldown: 4,
       },

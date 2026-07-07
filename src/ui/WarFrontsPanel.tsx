@@ -1,6 +1,8 @@
 import type { GameState, WarFrontState } from '../game/types/gameTypes';
 import { getTheatre, NODE_MAP } from '../game/data/mapNodes';
 import { METRIC_INFO } from '../game/data/initialState';
+import { ACTIONS } from '../game/data/actions';
+import { WAR_FRONT_CAMPAIGN_HOOKS } from '../game/engine/warFrontEngine';
 
 interface Props {
   state: GameState;
@@ -35,6 +37,43 @@ function impactSummary(front: WarFrontState): string {
     .map((nodeId) => NODE_MAP[nodeId].name)
     .join(' / ');
   return `${metrics} -> ${nodes}`;
+}
+
+function driversSummary(front: WarFrontState): string {
+  const momentum = front.momentum >= 6 ? 'rising momentum' : front.momentum <= -6 ? 'stabilizing momentum' : 'low momentum';
+  const modifiers = front.activeModifiers.slice(0, 2).join(' / ');
+  return `${momentum}${modifiers ? ` / ${modifiers}` : ''}`;
+}
+
+function counterplaySummary(front: WarFrontState): string {
+  const counters = ACTIONS.filter((action) =>
+    action.warFrontEffects?.some(
+      (effect) =>
+        effect.frontId === front.id &&
+        ((effect.intensity ?? 0) < 0 || (effect.momentum ?? 0) < 0),
+    ),
+  )
+    .slice(0, 3)
+    .map((action) => action.name.replace('Activate ', '').replace('Launch ', ''));
+  return counters.length > 0 ? counters.join(' / ') : 'No direct action counter';
+}
+
+function campaignSummary(state: GameState, front: WarFrontState): string {
+  const hooks = WAR_FRONT_CAMPAIGN_HOOKS.filter((hook) => hook.frontId === front.id);
+  if (hooks.length === 0) return 'No direct campaign hook';
+  const active = hooks.find((hook) =>
+    state.activePressureCampaigns.some(
+      (campaign) => campaign.templateId === hook.templateId && campaign.status === 'active',
+    ),
+  );
+  if (active) return `Active: ${active.label}`;
+  const near = hooks.find((hook) => front.intensity >= hook.threshold - 6);
+  if (near) return `Near: ${near.label} at INT ${near.threshold}`;
+  return hooks.map((hook) => `${hook.label} at ${hook.threshold}`).join(' / ');
+}
+
+function recentShiftSummary(front: WarFrontState): string {
+  return `W${front.lastShiftWeek}: ${front.lastShiftSummary}`;
 }
 
 export function WarFrontsPanel({ state }: Props) {
@@ -75,7 +114,24 @@ export function WarFrontsPanel({ state }: Props) {
               </span>
             </div>
             <p className="mt-1.5 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Malaysia impact:</span>{' '}
               {impactSummary(front)}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Drivers:</span>{' '}
+              {driversSummary(front)}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Counterplay:</span>{' '}
+              {counterplaySummary(front)}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Campaign risk:</span>{' '}
+              {campaignSummary(state, front)}
+            </p>
+            <p className="mt-1 truncate text-[10px] text-slate-500">
+              <span className="font-semibold text-slate-400">Recent shift:</span>{' '}
+              {recentShiftSummary(front)}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1">
               {front.activeModifiers.map((modifier) => (

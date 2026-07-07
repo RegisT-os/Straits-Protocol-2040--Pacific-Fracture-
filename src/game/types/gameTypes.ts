@@ -304,6 +304,7 @@ export interface WarFrontState {
   linkedMetrics: MetricKey[];
   activeModifiers: string[];
   lastShiftWeek: number;
+  lastShiftSummary: string;
   tags: string[];
 }
 

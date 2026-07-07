@@ -49,7 +49,7 @@ export const ACTIONS: ActionDef[] = [
       'Work the informal channels — Jakarta, Bangkok, Hanoi, Manila — to keep ASEAN talking even when the formal track stalls.',
     category: 'diplomacy',
     roleRestriction: ['policy-strategist'],
-    metricEffects: { aseanCohesion: 8, institutionalTrust: 2, personalStamina: -3 },
+    metricEffects: { aseanCohesion: 8, institutionalTrust: 2, financialContinuity: 3, personalStamina: -3 },
     actorEffects: [{ actorId: 'indonesia-maritime', relationship: 4 }],
     warFrontEffects: [
       { frontId: 'pacific-war-front', intensity: -3, momentum: -5, modifier: 'ASEAN backchannel' },
@@ -239,7 +239,7 @@ export const ACTIONS: ActionDef[] = [
       hint: 'Surge patrols over',
     },
     roleRestriction: ['military-liaison'],
-    metricEffects: { maritimeControl: 8, energyAssurance: 2, alignmentPressure: 2 },
+    metricEffects: { maritimeControl: 8, energyAssurance: 2, financialContinuity: 3, alignmentPressure: 2 },
     actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
     warFrontEffects: [{ frontId: 'maritime-war-front', intensity: -4, momentum: -5, modifier: 'Maritime drone patrols' }],
     risk: {

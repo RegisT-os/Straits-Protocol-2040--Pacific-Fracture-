@@ -83,6 +83,11 @@ try {
   await page.waitForSelector('text=Actions selected:');
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
+  await page.waitForSelector('text=Drivers:');
+  await page.waitForSelector('text=Malaysia impact:');
+  await page.waitForSelector('text=Counterplay:');
+  await page.waitForSelector('text=Campaign risk:');
+  await page.waitForSelector('text=Recent shift:');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
   console.log('campaign started (Analyst difficulty, slot counter and war fronts visible)');
 
@@ -186,6 +191,7 @@ try {
   await page.waitForSelector('h2:has-text("Strategic Map")');
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
+  await page.waitForSelector('text=Counterplay:');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
   const mapAfterLoad = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
   if ((await mapAfterLoad.locator('button:has-text("Malacca Strait")').count()) === 0) {

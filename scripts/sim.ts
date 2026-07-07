@@ -29,7 +29,12 @@ import {
   startPressureCampaigns,
   tickPressureCampaigns,
 } from '../src/game/engine/pressureCampaignEngine';
-import { applyWarFrontEffects, deriveWarFrontStatus, tickWarFronts } from '../src/game/engine/warFrontEngine';
+import {
+  WAR_FRONT_CAMPAIGN_HOOKS,
+  applyWarFrontEffects,
+  deriveWarFrontStatus,
+  tickWarFronts,
+} from '../src/game/engine/warFrontEngine';
 import { Rng } from '../src/game/engine/rng';
 import {
   advanceTurn,
@@ -65,6 +70,12 @@ const ROLES: RoleId[] = [
 ];
 
 const DIFFICULTIES: DifficultyId[] = ['analyst', 'adviser', 'crisis-chair'];
+
+interface RunResult {
+  difficulty: DifficultyId;
+  role: RoleId;
+  final: GameState;
+}
 
 let failures = 0;
 function check(ok: boolean, message: string): void {
@@ -220,6 +231,14 @@ function validateDataReferences(): void {
       check(NODE_IDS.has(nodeId), `war front ${front.id}: invalid linked node ${nodeId}`);
     }
   }
+  for (const hook of WAR_FRONT_CAMPAIGN_HOOKS) {
+    check(WAR_FRONT_IDS.has(hook.frontId), `war front campaign hook: invalid front ${hook.frontId}`);
+    check(
+      PRESSURE_CAMPAIGN_IDS.has(hook.templateId),
+      `war front campaign hook: invalid pressure campaign ${hook.templateId}`,
+    );
+    check(hook.threshold >= 0 && hook.threshold <= 100, `war front campaign hook ${hook.templateId}: invalid threshold`);
+  }
   for (const action of ACTIONS) validateActionMapRefs(action);
   for (const actor of ACTORS) {
     for (const move of actor.moves) validateMoveMapRefs(actor.id, move);
@@ -256,6 +275,52 @@ function expectCampaignCounter(templateId: PressureCampaignTemplateId, actionId:
     state.timeline.some((entry) => entry.type === 'map' && entry.title.startsWith('Campaign disrupted')),
     `${actionId} counter did not create a campaign timeline entry`,
   );
+}
+
+function average(values: number[]): string {
+  if (values.length === 0) return 'n/a';
+  return (values.reduce((sum, value) => sum + value, 0) / values.length).toFixed(1);
+}
+
+function campaignStartCount(state: GameState): number {
+  return state.timeline.filter(
+    (entry) =>
+      entry.type === 'map' &&
+      (entry.title.startsWith('Campaign started:') || entry.title.startsWith('War front campaign:')),
+  ).length;
+}
+
+function frontDrivenCampaignStartCount(state: GameState): number {
+  return state.timeline.filter((entry) => entry.type === 'map' && entry.title.startsWith('War front campaign:')).length;
+}
+
+function campaignRefreshCount(state: GameState): number {
+  return state.timeline.filter((entry) => entry.type === 'map' && entry.title.startsWith('Campaign intensified:')).length;
+}
+
+function reportRunDiagnostics(label: string, results: RunResult[]): void {
+  console.log(`\n${label} diagnostics:`);
+  for (const difficulty of DIFFICULTIES) {
+    const byDifficulty = results.filter((result) => result.difficulty === difficulty);
+    const early = byDifficulty.filter((result) => result.final.ending?.early);
+    const campaignStarts = byDifficulty.map((result) => campaignStartCount(result.final));
+    const frontCampaignStarts = byDifficulty.map((result) => frontDrivenCampaignStartCount(result.final));
+    const campaignRefreshes = byDifficulty.map((result) => campaignRefreshCount(result.final));
+    console.log(
+      `  ${difficulty}: avg early collapse week ${average(early.map((result) => result.final.week))} (${early.length}/${byDifficulty.length} early), avg campaign starts ${average(campaignStarts)} (${average(frontCampaignStarts)} front-driven), avg campaign refreshes ${average(campaignRefreshes)}`,
+    );
+  }
+
+  const escalationCounts = new Map<number, number>();
+  const statusCounts = new Map<string, number>();
+  for (const { final } of results) {
+    for (const front of Object.values(final.warFronts)) {
+      escalationCounts.set(front.escalationLevel, (escalationCounts.get(front.escalationLevel) ?? 0) + 1);
+      statusCounts.set(front.status, (statusCounts.get(front.status) ?? 0) + 1);
+    }
+  }
+  console.log('  final front escalation distribution:', Object.fromEntries(escalationCounts));
+  console.log('  final front status distribution:', Object.fromEntries(statusCounts));
 }
 
 /** Random policy: fills all slots with random available actions. */
@@ -307,6 +372,12 @@ function runGreedy(role: RoleId, seed: number, difficulty: DifficultyId): GameSt
           const gain = bad ? -(v ?? 0) : (v ?? 0);
           score += gain * (need / 100 + (cur < 35 && !bad ? 1.5 : 0) + (bad && cur > 65 ? 1.5 : 0));
         }
+        for (const effect of a.warFrontEffects ?? []) {
+          const front = state.warFronts[effect.frontId];
+          const counter = Math.max(0, -(effect.intensity ?? 0)) + Math.max(0, -(effect.momentum ?? 0)) * 0.35;
+          const pressure = front.intensity / 100 + Math.max(0, front.momentum) / 80 + front.escalationLevel * 0.12;
+          score += counter * pressure;
+        }
         return { id: a.id, score };
       })
       .sort((x, y) => y.score - x.score);
@@ -327,10 +398,12 @@ console.log('Data references: map nodes, incidents, targeting, AI moves, and eve
 // --- 1 & 2: campaigns terminate cleanly on every difficulty -------------------
 console.log('Random-policy campaigns (all roles × all difficulties, 2 seeds each):');
 const endingCounts = new Map<string, number>();
+const randomResults: RunResult[] = [];
 for (const difficulty of DIFFICULTIES) {
   for (const role of ROLES) {
     for (let s = 1; s <= 2; s++) {
       const final = runRandom(role, s * 1000 + ROLES.indexOf(role), difficulty);
+      randomResults.push({ difficulty, role, final });
       check(
         final.status === 'ended' && final.ending !== null,
         `${role}/${difficulty}/${s}: no ending reached`,
@@ -344,6 +417,7 @@ for (const difficulty of DIFFICULTIES) {
   }
 }
 console.log('  ending distribution:', Object.fromEntries(endingCounts));
+reportRunDiagnostics('Random policy', randomResults);
 
 // --- 3: determinism with multi-action turns -----------------------------------
 const a = runRandom('policy-strategist', 42, 'adviser');
@@ -721,10 +795,12 @@ const floor: Record<DifficultyId, { full: number; total: number }> = {
   adviser: { full: 0, total: 0 },
   'crisis-chair': { full: 0, total: 0 },
 };
+const greedyResults: RunResult[] = [];
 for (const difficulty of DIFFICULTIES) {
   for (const role of ROLES) {
     for (let s = 1; s <= 3; s++) {
       const final = runGreedy(role, s * 313 + ROLES.indexOf(role), difficulty);
+      greedyResults.push({ difficulty, role, final });
       floor[difficulty].total++;
       if (!final.ending?.early) floor[difficulty].full++;
       console.log(
@@ -737,17 +813,18 @@ for (const difficulty of DIFFICULTIES) {
   const { full, total } = floor[difficulty];
   console.log(`  ${difficulty}: reached week 104 in ${full}/${total} runs`);
 }
+reportRunDiagnostics('Greedy policy', greedyResults);
 check(
-  floor.analyst.full >= floor.analyst.total * 0.7,
+  floor.analyst.full >= 14,
   `Analyst too hard: greedy reached 104 only ${floor.analyst.full}/${floor.analyst.total}`,
 );
 check(
-  floor.adviser.full >= floor.adviser.total * 0.5,
+  floor.adviser.full >= 10,
   `Adviser too hard: greedy reached 104 only ${floor.adviser.full}/${floor.adviser.total}`,
 );
 check(
-  floor['crisis-chair'].full >= 1,
-  'Crisis Chair is instant death: greedy never reached week 104',
+  floor['crisis-chair'].full >= 4,
+  `Crisis Chair collapsed too quickly: greedy reached 104 only ${floor['crisis-chair'].full}/${floor['crisis-chair'].total}`,
 );
 
 // ------------------------------------------------------------------------------
