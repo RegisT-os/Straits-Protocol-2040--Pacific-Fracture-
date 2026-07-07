@@ -154,6 +154,10 @@ try {
   console.log(`after 8 turns: ${week}`);
   if (!week?.startsWith('Week 9/')) throw new Error(`expected Week 9, got "${week}"`);
 
+  if (await page.locator('text=Decision required').count()) {
+    await page.locator('div.fixed button').first().click();
+    console.log('  resolved final interactive event before save');
+  }
   await page.click('button:has-text("Save")');
   await page.waitForSelector('text=Saved ✓');
   console.log('manual save ok');

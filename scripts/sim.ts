@@ -47,6 +47,7 @@ import type {
   MapNodeId,
   NodeEffectDef,
   PressureCampaignStartDef,
+  PressureCampaignTemplateId,
   RoleId,
 } from '../src/game/types/gameTypes';
 
@@ -188,6 +189,27 @@ function targetsFor(actionIds: string[]): Record<string, MapNodeId> {
     if (action?.targeting) targets[id] = action.targeting.nodeIds[0];
   }
   return targets;
+}
+
+function expectCampaignCounter(templateId: PressureCampaignTemplateId, actionId: string): void {
+  const action = ACTIONS.find((candidate) => candidate.id === actionId);
+  check(action !== undefined, `expected counter action ${actionId}`);
+  if (!action) return;
+
+  const state = createInitialState('security-consultant', 9001, 'adviser');
+  startPressureCampaigns(state, [{ templateId, intensity: 3 }], 'counter-test');
+  const campaign = state.activePressureCampaigns[0];
+  const before = campaign.intensity;
+  disruptPressureCampaignsForAction(state, action);
+
+  check(
+    campaign.status === 'disrupted' || campaign.intensity < before,
+    `${actionId} did not counter ${templateId}`,
+  );
+  check(
+    state.timeline.some((entry) => entry.type === 'map' && entry.title.startsWith('Campaign disrupted')),
+    `${actionId} counter did not create a campaign timeline entry`,
+  );
 }
 
 /** Random policy: fills all slots with random available actions. */
@@ -349,7 +371,39 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
     'matching counter action did not disrupt cloud-banking campaign',
   );
   assertClamped(state, 'campaign disruption');
-  console.log('\nPressure campaigns: start, refresh, completion, disruption, and clamping OK');
+
+  const zeroTick = createInitialState('security-consultant', 17, 'adviser');
+  startPressureCampaigns(zeroTick, [{ templateId: 'markets-capital-flight', intensity: 1 }], 'sim');
+  zeroTick.activePressureCampaigns[0].intensity = 0;
+  tickPressureCampaigns(zeroTick);
+  check(
+    zeroTick.activePressureCampaigns[0].status === 'disrupted' &&
+      zeroTick.activePressureCampaigns[0].currentWeek === 0,
+    'zero-intensity active campaign ticked instead of becoming disrupted',
+  );
+
+  const counterPairs: [PressureCampaignTemplateId, string][] = [
+    ['china-scs-coercion', 'deploy-drone-patrols'],
+    ['china-scs-coercion', 'quiet-asean-backchannel'],
+    ['china-scs-coercion', 'request-us-orbital'],
+    ['markets-capital-flight', 'bnm-confidence-briefing'],
+    ['markets-capital-flight', 'singapore-continuity-channel'],
+    ['threat-cloud-banking-wave', 'coordinate-asean-cert'],
+    ['threat-cloud-banking-wave', 'national-cyber-shield'],
+    ['russia-grey-zone-cyber', 'public-reality-campaign'],
+    ['russia-grey-zone-cyber', 'strict-neutrality'],
+    ['russia-grey-zone-cyber', 'engage-europe'],
+    ['singapore-continuity-hedge', 'singapore-continuity-channel'],
+    ['singapore-continuity-hedge', 'quiet-asean-backchannel'],
+    ['europe-sanctions-track', 'strict-neutrality'],
+    ['europe-sanctions-track', 'engage-europe'],
+    ['europe-sanctions-track', 'quiet-asean-backchannel'],
+  ];
+  for (const [templateId, actionId] of counterPairs) {
+    expectCampaignCounter(templateId, actionId);
+  }
+
+  console.log('\nPressure campaigns: start, refresh, completion, disruption, counterplay, and clamping OK');
 }
 
 // --- 4c: map incidents fire, targeted actions work, migration restores map ----
@@ -515,11 +569,37 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
       completionEffects: {},
       disruptionEffects: {},
     },
+    {
+      id: 'zero-active',
+      templateId: 'markets-capital-flight',
+      actorId: 'financial-markets',
+      title: 'Zero Intensity',
+      description: 'zero',
+      theatre: 'cyber-financial',
+      targetNodeIds: ['bnm-core'],
+      startedWeek: state.week,
+      durationWeeks: 4,
+      currentWeek: 1,
+      intensity: 0,
+      status: 'active',
+      tags: [],
+      counterActionTags: [],
+      weeklyNodeEffects: {},
+      weeklyMetricEffects: {},
+      completionEffects: {},
+      disruptionEffects: {},
+    },
   ];
   const repairedV4 = migrateState(corruptV4, 4);
-  check(repairedV4.activePressureCampaigns.length === 1, 'v4 repair did not prune unknown pressure campaign');
-  check(repairedV4.activePressureCampaigns[0].intensity === 4, 'v4 repair did not clamp pressure campaign intensity');
-  check(repairedV4.activePressureCampaigns[0].currentWeek === 2, 'v4 repair did not clamp pressure campaign week');
+  const clampedCampaign = repairedV4.activePressureCampaigns.find((campaign) => campaign.id === 'bad-but-known');
+  const zeroCampaign = repairedV4.activePressureCampaigns.find((campaign) => campaign.id === 'zero-active');
+  check(repairedV4.activePressureCampaigns.length === 2, 'v4 repair did not prune unknown pressure campaign');
+  check(clampedCampaign?.intensity === 4, 'v4 repair did not clamp pressure campaign intensity');
+  check(clampedCampaign?.currentWeek === 2, 'v4 repair did not clamp pressure campaign week');
+  check(
+    zeroCampaign?.status === 'disrupted' && zeroCampaign.intensity === 0,
+    'v4 repair left a zero-intensity pressure campaign active',
+  );
 
   console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3/v4 save migration OK`);
 }

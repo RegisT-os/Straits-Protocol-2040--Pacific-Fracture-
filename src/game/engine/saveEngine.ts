@@ -160,6 +160,8 @@ function normalizePressureCampaign(raw: unknown, state: GameState): ActivePressu
     typeof raw.intensity === 'number' && Number.isFinite(raw.intensity)
       ? Math.max(0, Math.min(4, raw.intensity))
       : template.intensity;
+  const rawStatus = isPressureCampaignStatus(raw.status) ? raw.status : 'active';
+  const status = rawStatus === 'active' && intensity <= 0 ? 'disrupted' : rawStatus;
   const rawTargets = Array.isArray(raw.targetNodeIds) ? raw.targetNodeIds : template.targetNodeIds;
   const targetNodeIds = rawTargets.filter(isMapNodeId);
 
@@ -175,7 +177,7 @@ function normalizePressureCampaign(raw: unknown, state: GameState): ActivePressu
     durationWeeks,
     currentWeek,
     intensity,
-    status: isPressureCampaignStatus(raw.status) ? raw.status : 'active',
+    status,
     tags: Array.isArray(raw.tags) && raw.tags.every((tag) => typeof tag === 'string')
       ? raw.tags
       : template.tags,

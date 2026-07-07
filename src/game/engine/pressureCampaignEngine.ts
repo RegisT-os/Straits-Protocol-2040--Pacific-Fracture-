@@ -130,6 +130,11 @@ export function startPressureCampaigns(
 export function tickPressureCampaigns(state: GameState): void {
   for (const campaign of state.activePressureCampaigns) {
     if (campaign.status !== 'active') continue;
+    if (campaign.intensity <= 0) {
+      campaign.status = 'disrupted';
+      campaign.intensity = 0;
+      continue;
+    }
     campaign.currentWeek += 1;
 
     const nodeDelta = scaleNodeDelta(campaign.weeklyNodeEffects, campaign.intensity);
@@ -171,6 +176,7 @@ function actionCounterTags(action: ActionDef): string[] {
   if (action.id.includes('cert')) tags.add('cert');
   if (action.id.includes('cyber')) tags.add('cyber');
   if (action.id.includes('drone') || action.id.includes('maritime')) tags.add('maritime');
+  if (action.id.includes('orbital')) tags.add('orbital');
   if (action.id.includes('reality')) tags.add('public-reality');
   if (action.id.includes('singapore')) tags.add('singapore');
   if (action.id.includes('neutrality') || action.id.includes('alignment')) tags.add('neutrality');
