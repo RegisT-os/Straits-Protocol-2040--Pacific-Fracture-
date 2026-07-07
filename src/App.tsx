@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DifficultyId, GameState, RoleId } from './game/types/gameTypes';
+import type { DifficultyId, GameState, MapNodeId, RoleId } from './game/types/gameTypes';
 import { createInitialState } from './game/data/initialState';
 import { randomSeed } from './game/engine/rng';
-import { advanceTurn, resolvePendingEvent, togglePendingAction } from './game/engine/turnEngine';
+import {
+  advanceTurn,
+  resolvePendingEvent,
+  selectMapNode,
+  setActionTarget,
+  togglePendingAction,
+} from './game/engine/turnEngine';
 import { clearSave, hasSave, loadGame, saveGame, savedAt } from './game/engine/saveEngine';
 import { CampaignSetup } from './ui/CampaignSetup';
 import { GameShell } from './ui/GameShell';
@@ -46,6 +52,19 @@ export default function App() {
       saveGame(next); // selection survives a reload
       return next;
     });
+  }, []);
+
+  const handleSetTarget = useCallback((actionId: string, nodeId: MapNodeId) => {
+    setState((prev) => {
+      if (!prev) return prev;
+      const next = setActionTarget(prev, actionId, nodeId);
+      saveGame(next); // targets survive a reload too
+      return next;
+    });
+  }, []);
+
+  const handleSelectNode = useCallback((nodeId: MapNodeId | null) => {
+    setState((prev) => (prev ? selectMapNode(prev, nodeId) : prev));
   }, []);
 
   const handleAdvance = useCallback(() => {
@@ -109,6 +128,8 @@ export default function App() {
     <GameShell
       state={state}
       onToggleAction={handleToggleAction}
+      onSetTarget={handleSetTarget}
+      onSelectNode={handleSelectNode}
       onAdvance={handleAdvance}
       onResolveEvent={handleResolveEvent}
       onSave={handleSave}

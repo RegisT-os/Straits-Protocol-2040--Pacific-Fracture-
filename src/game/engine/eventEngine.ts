@@ -14,6 +14,7 @@ import {
   makeTimelineEntry,
 } from './actionEngine';
 import { scheduleEffects } from './scheduleEngine';
+import { addIncidents, applyNodeEffects } from './mapEngine';
 
 /** Chance that any event fires on a given turn. */
 const EVENT_CHANCE = 0.6;
@@ -82,6 +83,8 @@ export function maybeTriggerEvent(state: GameState, rng: Rng, difficulty: Diffic
   applyMetricDelta(state, scaleSeverity(event.metricEffects, difficulty.eventSeverityMult));
   applyActorEffects(state, event.actorEffects);
   addFlags(state, event.flagsAdded);
+  applyNodeEffects(state, event.nodeEffects);
+  addIncidents(state, event.incidents, event.title);
 
   state.timeline.push(
     makeTimelineEntry(state, {
@@ -115,6 +118,8 @@ export function resolveEventChoice(state: GameState, event: EventDef, choice: Ev
   applyActorEffects(state, choice.actorEffects);
   addFlags(state, choice.flagsAdded);
   scheduleEffects(state, choice.schedules, event.title);
+  applyNodeEffects(state, choice.nodeEffects);
+  addIncidents(state, choice.incidents, event.title);
 
   state.timeline.push(
     makeTimelineEntry(state, {

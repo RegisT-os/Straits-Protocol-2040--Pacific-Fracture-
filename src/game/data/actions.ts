@@ -18,6 +18,10 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Stand up the national cyber defense coordination posture: mandatory reporting, sector watch floors, surge staffing.',
     category: 'cyber',
+    nodeEffects: [
+      { nodeId: 'payment-rails', riskLevel: -4, cyberExposure: -4 },
+      { nodeId: 'digital-id', riskLevel: -3 },
+    ],
     metricEffects: { cyberResilience: 8, institutionalTrust: 2, mentalLoad: 4, financialContinuity: -2 },
     cooldown: 6,
   },
@@ -27,6 +31,10 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Coordinate a Bank Negara market confidence operation: liquidity signalling, settlement reassurance, quiet calls to primary dealers.',
     category: 'finance',
+    nodeEffects: [
+      { nodeId: 'bnm-core', riskLevel: -8, stability: 5 },
+      { nodeId: 'bursa-node', riskLevel: -5 },
+    ],
     roleRestriction: ['finance-operator'],
     metricEffects: { financialContinuity: 8, institutionalTrust: 3, publicReality: 2, personalStamina: -4 },
     actorEffects: [{ actorId: 'financial-markets', pressure: -6 }],
@@ -49,6 +57,11 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Segment and harden the operational technology behind Port Klang container and fuel handling before someone else maps it first.',
     category: 'cyber',
+    targeting: {
+      nodeIds: ['port-klang'],
+      effect: { stability: 8, riskLevel: -10, cyberExposure: -12 },
+      hint: 'Harden the OT network at',
+    },
     metricEffects: { cyberResilience: 5, maritimeControl: 4, financialContinuity: -2, mentalLoad: 2 },
     flagsAdded: ['port-klang-hardened'],
     once: true,
@@ -59,6 +72,11 @@ export const ACTIONS: ActionDef[] = [
     description:
       'A national pre-bunking and verification campaign: deepfake literacy, official-channel verification, rumour response cells.',
     category: 'information',
+    targeting: {
+      nodeIds: ['digital-id', 'kuala-lumpur', 'putrajaya'],
+      effect: { riskLevel: -8, stability: 5 },
+      hint: 'Focus the campaign on',
+    },
     metricEffects: { publicReality: 8, institutionalTrust: 3, personalStamina: -5, mentalLoad: 3 },
     schedules: [
       {
@@ -78,6 +96,11 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Ask US PACOM for backup positioning, timing and satellite communications coverage. The help is real. So is the invoice.',
     category: 'strategy',
+    targeting: {
+      nodeIds: ['asean-microsat', 'commercial-satnet', 'financial-timing-link', 'maritime-imaging', 'emergency-nav-mesh'],
+      effect: { stability: 10, riskLevel: -8 },
+      hint: 'Anchor US coverage on',
+    },
     metricEffects: { orbitalAccess: 10, cyberResilience: 2, sovereignty: -4, alignmentPressure: 8 },
     actorEffects: [
       { actorId: 'us-pacom', relationship: 6 },
@@ -157,6 +180,10 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Formalize the BNM–MAS continuity channel: mutual settlement fallback, joint incident response, shared liquidity signalling.',
     category: 'finance',
+    nodeEffects: [
+      { nodeId: 'bnm-core', riskLevel: -4 },
+      { nodeId: 'singapore', stability: 2 },
+    ],
     metricEffects: { financialContinuity: 7, cyberResilience: 3, sovereignty: -3 },
     actorEffects: [{ actorId: 'singapore-authority', relationship: 8, pressure: -4 }],
     flagsAdded: ['singapore-lifeline'],
@@ -183,6 +210,11 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Surge autonomous surface and aerial patrols across the Straits and EEZ approaches. Presence is deterrence — and provocation.',
     category: 'maritime',
+    targeting: {
+      nodeIds: ['malacca-strait', 'malaysian-eez', 'scs-air-sea-corridor'],
+      effect: { stability: 6, riskLevel: -10 },
+      hint: 'Surge patrols over',
+    },
     roleRestriction: ['military-liaison'],
     metricEffects: { maritimeControl: 8, energyAssurance: 2, alignmentPressure: 2 },
     actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
@@ -201,6 +233,11 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Activate strategic reserves, diversify LNG routing, and pre-position fuel for the grid. Expensive insurance against dark weeks.',
     category: 'energy',
+    targeting: {
+      nodeIds: ['bintulu-lng', 'brunei-energy-corridor'],
+      effect: { stability: 8, riskLevel: -8 },
+      hint: 'Pre-position reserves at',
+    },
     metricEffects: { energyAssurance: 9, financialContinuity: -4, institutionalTrust: 2 },
     cooldown: 8,
   },
@@ -210,6 +247,10 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Run a coordinated national takedown of ransomware infrastructure and synthetic fraud farms operating against Malaysian targets.',
     category: 'cyber',
+    nodeEffects: [
+      { nodeId: 'cloud-region', riskLevel: -6, cyberExposure: -4 },
+      { nodeId: 'payment-rails', riskLevel: -4 },
+    ],
     roleRestriction: ['intelligence-officer', 'security-consultant'],
     metricEffects: { cyberResilience: 6, financialContinuity: 2, personalStamina: -4 },
     actorEffects: [{ actorId: 'threat-ecosystem', aggression: -8, pressure: -5 }],
@@ -277,6 +318,12 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Build the regional incident-response fusion cell you keep proposing in workshops: shared telemetry, joint playbooks, real hotlines.',
     category: 'cyber',
+    targeting: {
+      nodeIds: ['bnm-core', 'payment-rails', 'bursa-node', 'cloud-region', 'digital-id'],
+      effect: { riskLevel: -10, cyberExposure: -8, stability: 4 },
+      hint: 'Fuse defenses around',
+    },
+    nodeEffects: [{ nodeId: 'jakarta', stability: 2 }],
     roleRestriction: ['security-consultant'],
     metricEffects: { cyberResilience: 7, aseanCohesion: 5, mentalLoad: 4 },
     actorEffects: [{ actorId: 'threat-ecosystem', pressure: -4 }],

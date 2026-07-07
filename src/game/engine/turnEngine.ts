@@ -1,8 +1,9 @@
-import type { DifficultyDef, GameState } from '../types/gameTypes';
+import type { ActionDef, DifficultyDef, GameState, MapNodeId } from '../types/gameTypes';
 import { Rng } from './rng';
 import { getAction } from '../data/actions';
 import { getDifficulty } from '../data/difficulty';
 import { getPhaseInfo, phaseForWeek } from '../data/initialState';
+import { NODE_MAP } from '../data/mapNodes';
 import {
   applyPlayerAction,
   clamp,
@@ -16,6 +17,13 @@ import { getEvent } from '../data/events';
 import { maybeTriggerEvent, resolveEventChoice } from './eventEngine';
 import { checkEnding } from './endingEngine';
 import { resolveDueEffects, scheduleEffects } from './scheduleEngine';
+import {
+  addIncidents,
+  applyMapPressureOnMetrics,
+  applyNodeDelta,
+  applyNodeEffects,
+  tickMap,
+} from './mapEngine';
 
 function cloneState(state: GameState): GameState {
   return structuredClone(state);
@@ -87,17 +95,22 @@ function applyPassiveDrift(state: GameState, difficulty: DifficultyDef): void {
  * Pure with respect to the input state (deep-cloned).
  *
  * Order per turn:
- *  1. phase determination, 2. passive drift, 3. cooldown ticks,
- *  4. player actions (up to slot count), 5. scheduled effects due,
- *  6. AI moves, 7. event trigger, 8. ending check,
- *  9. week increment + phase transition.
+ *  1. phase determination, 2. passive drift + map tick/pressure,
+ *  3. cooldown ticks, 4. player actions (up to slot count),
+ *  5. scheduled effects due, 6. AI moves, 7. event trigger,
+ *  8. ending check, 9. week increment + phase transition.
  */
-export function advanceTurn(state: GameState, actionIds: string[]): GameState {
+export function advanceTurn(
+  state: GameState,
+  actionIds: string[],
+  targetOverrides?: Record<string, MapNodeId>,
+): GameState {
   if (state.status !== 'active') return state;
 
   const next = cloneState(state);
   const rng = new Rng(next.seed, next.rngCursor);
   const difficulty = getDifficulty(next.difficulty);
+  const targets = targetOverrides ?? next.pendingTargets;
 
   // Slot capacity is what the player saw when selecting — pre-drift.
   const slots = getActionSlots(next);
@@ -105,8 +118,12 @@ export function advanceTurn(state: GameState, actionIds: string[]): GameState {
   // 1. Phase is derived from the current week.
   next.phase = phaseForWeek(next.week);
 
-  // 2–3. Passive drift and cooldown ticks.
+  // 2. Passive drift, then the map grinds and pushes back on the metrics.
   applyPassiveDrift(next, difficulty);
+  tickMap(next);
+  applyMapPressureOnMetrics(next);
+
+  // 3. Cooldown ticks.
   tickActionCooldowns(next);
   tickActorCooldowns(next);
 
@@ -116,12 +133,19 @@ export function advanceTurn(state: GameState, actionIds: string[]): GameState {
     if (seen.has(actionId)) continue;
     seen.add(actionId);
     const action = getAction(actionId);
-    if (action && getActionAvailability(next, action).available) {
-      applyPlayerAction(next, rng, action);
-      scheduleEffects(next, action.schedules, action.name);
-    }
+    if (!action || !getActionAvailability(next, action).available) continue;
+    // A targeted action without a valid target is skipped defensively;
+    // the UI blocks advancing in that situation.
+    const target = targets[actionId];
+    if (action.targeting && (!target || !action.targeting.nodeIds.includes(target))) continue;
+    applyPlayerAction(next, rng, action);
+    scheduleEffects(next, action.schedules, action.name);
+    applyNodeEffects(next, action.nodeEffects);
+    addIncidents(next, action.incidents, action.name);
+    if (action.targeting && target) applyActionTarget(next, action, target);
   }
   next.pendingActions = [];
+  next.pendingTargets = {};
 
   // 5. Delayed consequences whose week has come.
   resolveDueEffects(next);
@@ -162,15 +186,50 @@ export function advanceTurn(state: GameState, actionIds: string[]): GameState {
   return next;
 }
 
+/** Apply a targeted action's effect to its chosen node, with a timeline note. */
+function applyActionTarget(state: GameState, action: ActionDef, target: MapNodeId): void {
+  if (!action.targeting) return;
+  applyNodeDelta(state, target, action.targeting.effect);
+  state.timeline.push(
+    makeTimelineEntry(state, {
+      type: 'map',
+      title: `${action.name} — ${NODE_MAP[target].name}`,
+      description: `${action.name} takes effect at ${NODE_MAP[target].name}.`,
+    }),
+  );
+}
+
 /** Toggle an action in the pending selection (used by the UI before advancing). */
 export function togglePendingAction(state: GameState, actionId: string): GameState {
   const next = cloneState(state);
   const idx = next.pendingActions.indexOf(actionId);
   if (idx >= 0) {
     next.pendingActions.splice(idx, 1);
+    delete next.pendingTargets[actionId];
   } else if (next.pendingActions.length < getActionSlots(next)) {
     next.pendingActions.push(actionId);
+    // Single-option targeting is auto-assigned; multi-option waits for the player.
+    const action = getAction(actionId);
+    if (action?.targeting && action.targeting.nodeIds.length === 1) {
+      next.pendingTargets[actionId] = action.targeting.nodeIds[0];
+    }
   }
+  return next;
+}
+
+/** Set (or change) the map target for a pending targeted action. */
+export function setActionTarget(state: GameState, actionId: string, nodeId: MapNodeId): GameState {
+  const action = getAction(actionId);
+  if (!action?.targeting || !action.targeting.nodeIds.includes(nodeId)) return state;
+  const next = cloneState(state);
+  next.pendingTargets[actionId] = nodeId;
+  return next;
+}
+
+/** Select a node for inspection in the map UI. */
+export function selectMapNode(state: GameState, nodeId: MapNodeId | null): GameState {
+  const next = cloneState(state);
+  next.selectedNode = nodeId;
   return next;
 }
 

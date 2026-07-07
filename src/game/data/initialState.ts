@@ -13,6 +13,7 @@ import { ACTORS } from './actors';
 import { getDifficulty } from './difficulty';
 import { getRole } from './roles';
 import { clampMetrics } from '../engine/actionEngine';
+import { createInitialMap } from '../engine/mapEngine';
 
 export const MAX_WEEKS = 104;
 
@@ -161,6 +162,9 @@ export function createInitialState(
     completedActions: [],
     actionCooldowns: {},
     pendingActions: [],
+    pendingTargets: {},
+    map: createInitialMap(),
+    selectedNode: null,
     scheduledEffects: [],
     flags: [],
     ending: null,

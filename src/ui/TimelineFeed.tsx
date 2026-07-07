@@ -12,6 +12,7 @@ const TYPE_STYLE: Record<TimelineEntryType, { label: string; badge: string; bord
   phase: { label: 'Phase', badge: 'bg-indigo-950 text-indigo-300', border: 'border-l-indigo-500' },
   risk: { label: 'Blowback', badge: 'bg-orange-950 text-orange-400', border: 'border-l-orange-500' },
   scheduled: { label: 'Delayed', badge: 'bg-purple-950 text-purple-300', border: 'border-l-purple-500' },
+  map: { label: 'Map', badge: 'bg-teal-950 text-teal-300', border: 'border-l-teal-500' },
 };
 
 export function TimelineFeed({ timeline }: Props) {

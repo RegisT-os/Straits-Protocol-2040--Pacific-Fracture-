@@ -1,7 +1,8 @@
 import type { GameState } from '../types/gameTypes';
+import { createInitialMap } from './mapEngine';
 
 const SAVE_KEY = 'straits-protocol-2040-save';
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 interface SaveEnvelope {
   version: number;
@@ -42,13 +43,19 @@ export function saveGame(state: GameState): boolean {
   }
 }
 
-/** Fill in fields introduced after a save was written, so v1 saves still load. */
-function migrate(state: GameState, version: number): GameState {
+/** Fill in fields introduced after a save was written, so older saves still load. */
+export function migrateState(state: GameState, version: number): GameState {
   if (version < 2) {
     state.difficulty ??= 'adviser';
     state.pendingActions ??= [];
     state.scheduledEffects ??= [];
     state.lastEventWeek ??= {};
+  }
+  if (version < 3) {
+    // v2 saves predate the strategic map — start it fresh mid-campaign.
+    state.map ??= createInitialMap();
+    state.selectedNode ??= null;
+    state.pendingTargets ??= {};
   }
   return state;
 }
@@ -60,7 +67,7 @@ export function loadGame(): GameState | null {
     const envelope = JSON.parse(raw) as Partial<SaveEnvelope>;
     if (typeof envelope.version !== 'number' || envelope.version > SAVE_VERSION) return null;
     if (!isValidState(envelope.state)) return null;
-    return migrate(envelope.state, envelope.version);
+    return migrateState(envelope.state, envelope.version);
   } catch {
     return null;
   }

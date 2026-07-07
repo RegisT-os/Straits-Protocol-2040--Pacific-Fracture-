@@ -1,5 +1,6 @@
-import type { ActionDef, GameState } from '../game/types/gameTypes';
+import type { ActionDef, GameState, MapNodeId } from '../game/types/gameTypes';
 import { ACTIONS } from '../game/data/actions';
+import { NODE_MAP } from '../game/data/mapNodes';
 import { getActionAvailability } from '../game/engine/actionEngine';
 import { deltaChips } from './format';
 
@@ -8,6 +9,7 @@ interface Props {
   pendingActions: string[];
   slots: number;
   onToggle: (actionId: string) => void;
+  onSetTarget: (actionId: string, nodeId: MapNodeId) => void;
 }
 
 const CATEGORY_LABEL: Record<ActionDef['category'], string> = {
@@ -32,7 +34,7 @@ const CATEGORY_COLOR: Record<ActionDef['category'], string> = {
   strategy: 'text-amber-400 border-amber-900',
 };
 
-export function CommandPanel({ state, pendingActions, slots, onToggle }: Props) {
+export function CommandPanel({ state, pendingActions, slots, onToggle, onSetTarget }: Props) {
   const entries = ACTIONS.map((action) => ({
     action,
     availability: getActionAvailability(state, action),
@@ -59,8 +61,8 @@ export function CommandPanel({ state, pendingActions, slots, onToggle }: Props) 
           const blocked = !selected && slotsFull;
           const chips = deltaChips(action.metricEffects);
           return (
+            <div key={action.id}>
             <button
-              key={action.id}
               type="button"
               disabled={!availability.available || blocked}
               title={blocked ? 'All action slots used — deselect another action first' : undefined}
@@ -73,7 +75,7 @@ export function CommandPanel({ state, pendingActions, slots, onToggle }: Props) 
                     : blocked
                       ? 'cursor-not-allowed border-slate-800 bg-slate-900 opacity-50'
                       : 'border-slate-800 bg-slate-900 hover:border-slate-600'
-              }`}
+              } ${selected && action.targeting ? 'rounded-b-none' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-semibold text-slate-100">
@@ -115,6 +117,26 @@ export function CommandPanel({ state, pendingActions, slots, onToggle }: Props) 
                 </p>
               )}
             </button>
+            {selected && action.targeting && (
+              <div className="rounded-b-md border border-t-0 border-cyan-500 bg-cyan-950/30 px-3 py-2">
+                <label className="font-mono text-[10px] text-amber-400 uppercase">
+                  {action.targeting.hint}{' '}
+                </label>
+                <select
+                  value={state.pendingTargets[action.id] ?? ''}
+                  onChange={(e) => onSetTarget(action.id, e.target.value as MapNodeId)}
+                  className="ml-1 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-200"
+                >
+                  {!state.pendingTargets[action.id] && <option value="">— pick a target —</option>}
+                  {action.targeting.nodeIds.map((nodeId) => (
+                    <option key={nodeId} value={nodeId}>
+                      {NODE_MAP[nodeId].name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            </div>
           );
         })}
       </div>

@@ -1,10 +1,12 @@
-import type { GameState } from '../game/types/gameTypes';
+import type { GameState, MapNodeId } from '../game/types/gameTypes';
 import { getPhaseInfo } from '../game/data/initialState';
 import { getRole } from '../game/data/roles';
 import { getDifficulty } from '../game/data/difficulty';
 import { getActionSlots } from '../game/engine/actionEngine';
 import { getPendingEvent } from '../game/engine/eventEngine';
+import { getAction } from '../game/data/actions';
 import { MetricsBar } from './MetricsBar';
+import { StrategicMap } from './StrategicMap';
 import { CommandPanel } from './CommandPanel';
 import { ActorPanel } from './ActorPanel';
 import { TimelineFeed } from './TimelineFeed';
@@ -13,6 +15,8 @@ import { EventModal } from './EventModal';
 interface Props {
   state: GameState;
   onToggleAction: (actionId: string) => void;
+  onSetTarget: (actionId: string, nodeId: MapNodeId) => void;
+  onSelectNode: (nodeId: MapNodeId | null) => void;
   onAdvance: () => void;
   onResolveEvent: (eventId: string, choiceId: string) => void;
   onSave: () => void;
@@ -23,6 +27,8 @@ interface Props {
 export function GameShell({
   state,
   onToggleAction,
+  onSetTarget,
+  onSelectNode,
   onAdvance,
   onResolveEvent,
   onSave,
@@ -36,7 +42,12 @@ export function GameShell({
   const slots = getActionSlots(state);
   const selectedCount = state.pendingActions.length;
 
-  const canAdvance = selectedCount > 0 && !pendingEvent;
+  // Every pending targeted action must have a target before the week can advance.
+  const missingTarget = state.pendingActions.some((id) => {
+    const action = getAction(id);
+    return action?.targeting && !state.pendingTargets[id];
+  });
+  const canAdvance = selectedCount > 0 && !pendingEvent && !missingTarget;
 
   return (
     <div className="flex h-screen flex-col bg-slate-950">
@@ -98,13 +109,15 @@ export function GameShell({
             title={
               pendingEvent
                 ? 'Resolve the pending event first'
-                : selectedCount > 0
-                  ? 'Advance one week'
-                  : 'Select at least one action first'
+                : missingTarget
+                  ? 'Pick a map target for every targeted action first'
+                  : selectedCount > 0
+                    ? 'Advance one week'
+                    : 'Select at least one action first'
             }
             className="rounded-md bg-cyan-600 px-4 py-1.5 text-xs font-semibold tracking-wide text-white uppercase transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
-            {selectedCount > 0 ? '▶ Advance Week' : 'Select an action'}
+            {missingTarget ? 'Pick a target' : selectedCount > 0 ? '▶ Advance Week' : 'Select an action'}
           </button>
         </div>
       </header>
@@ -114,16 +127,22 @@ export function GameShell({
         <MetricsBar metrics={state.metrics} />
       </div>
 
-      {/* Main grid */}
-      <main className="grid min-h-0 flex-1 grid-cols-1 gap-3 p-3 lg:grid-cols-[1.2fr_0.9fr_1fr]">
-        <CommandPanel
-          state={state}
-          pendingActions={state.pendingActions}
-          slots={slots}
-          onToggle={onToggleAction}
-        />
-        <ActorPanel state={state} />
-        <TimelineFeed timeline={state.timeline} />
+      {/* Main grid: command + strategic map on top, actors + timeline below */}
+      <main className="flex min-h-0 flex-1 flex-col gap-3 p-3">
+        <div className="grid min-h-0 flex-[3] grid-cols-1 gap-3 lg:grid-cols-[1fr_1.5fr]">
+          <CommandPanel
+            state={state}
+            pendingActions={state.pendingActions}
+            slots={slots}
+            onToggle={onToggleAction}
+            onSetTarget={onSetTarget}
+          />
+          <StrategicMap state={state} onSelectNode={onSelectNode} />
+        </div>
+        <div className="grid min-h-0 flex-[2] grid-cols-1 gap-3 lg:grid-cols-2">
+          <ActorPanel state={state} />
+          <TimelineFeed timeline={state.timeline} />
+        </div>
       </main>
 
       {pendingEvent && (

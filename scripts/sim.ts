@@ -16,10 +16,12 @@
 
 import { createInitialState } from '../src/game/data/initialState';
 import { ACTIONS } from '../src/game/data/actions';
+import { MAP_NODES } from '../src/game/data/mapNodes';
 import { getActionAvailability, getActionSlots } from '../src/game/engine/actionEngine';
 import { advanceTurn, resolvePendingEvent } from '../src/game/engine/turnEngine';
 import { getPendingEvent } from '../src/game/engine/eventEngine';
-import type { DifficultyId, GameState, RoleId } from '../src/game/types/gameTypes';
+import { migrateState } from '../src/game/engine/saveEngine';
+import type { DifficultyId, GameState, MapNodeId, RoleId } from '../src/game/types/gameTypes';
 
 const ROLES: RoleId[] = [
   'security-consultant',
@@ -43,6 +45,24 @@ function assertClamped(state: GameState, label: string): void {
   for (const [key, value] of Object.entries(state.metrics)) {
     check(value >= 0 && value <= 100, `${label}: metric ${key} out of range (${value})`);
   }
+  for (const def of MAP_NODES) {
+    const node = state.map.nodes[def.id];
+    check(node !== undefined, `${label}: map node ${def.id} missing`);
+    if (!node) continue;
+    for (const key of ['stability', 'riskLevel', 'cyberExposure'] as const) {
+      check(node[key] >= 0 && node[key] <= 100, `${label}: node ${def.id}.${key} out of range (${node[key]})`);
+    }
+  }
+}
+
+/** Fill required targets for a set of chosen actions (first option). */
+function targetsFor(actionIds: string[]): Record<string, MapNodeId> {
+  const targets: Record<string, MapNodeId> = {};
+  for (const id of actionIds) {
+    const action = ACTIONS.find((a) => a.id === id);
+    if (action?.targeting) targets[id] = action.targeting.nodeIds[0];
+  }
+  return targets;
 }
 
 /** Random policy: fills all slots with random available actions. */
@@ -66,7 +86,7 @@ function runRandom(role: RoleId, seed: number, difficulty: DifficultyId): GameSt
       if (candidates.length === 0) break;
       chosen.push(candidates[Math.floor(next() * candidates.length)].id);
     }
-    state = advanceTurn(state, chosen);
+    state = advanceTurn(state, chosen, targetsFor(chosen));
     const pending = getPendingEvent(state);
     if (pending && pending.choices) {
       const choice = pending.choices[Math.floor(next() * pending.choices.length)];
@@ -97,7 +117,8 @@ function runGreedy(role: RoleId, seed: number, difficulty: DifficultyId): GameSt
         return { id: a.id, score };
       })
       .sort((x, y) => y.score - x.score);
-    state = advanceTurn(state, scored.slice(0, slots).map((s) => s.id));
+    const chosen = scored.slice(0, slots).map((s) => s.id);
+    state = advanceTurn(state, chosen, targetsFor(chosen));
     const pending = getPendingEvent(state);
     if (pending && pending.choices) {
       state = resolvePendingEvent(state, pending.id, pending.choices[0].id);
@@ -146,7 +167,7 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   state = advanceTurn(state, ['condemn-russia']);
   let pending = getPendingEvent(state);
   if (pending?.choices) state = resolvePendingEvent(state, pending.id, pending.choices[0].id);
-  state = advanceTurn(state, ['public-reality-campaign']);
+  state = advanceTurn(state, ['public-reality-campaign'], targetsFor(['public-reality-campaign']));
   pending = getPendingEvent(state);
   if (pending?.choices) state = resolvePendingEvent(state, pending.id, pending.choices[0].id);
   check(state.scheduledEffects.length >= 2, 'actions with schedules did not queue effects');
@@ -163,6 +184,37 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   console.log(
     `\nScheduled effects: ${queued} queued, ${resolved.length} resolved by week ${state.week} — OK`,
   );
+}
+
+// --- 4b: map incidents fire, targeted actions work, migration restores map ----
+{
+  let state = createInitialState('military-liaison', 11, 'adviser');
+  // Targeted action via engine path (greedy policy also exercises this).
+  state = advanceTurn(state, ['deploy-drone-patrols'], { 'deploy-drone-patrols': 'malaysian-eez' });
+  let p = getPendingEvent(state);
+  if (p?.choices) state = resolvePendingEvent(state, p.id, p.choices[0].id);
+  const targeted = state.timeline.some((t) => t.type === 'map' && t.title.includes('Malaysian EEZ'));
+  check(targeted, 'targeted action did not produce a map timeline entry');
+
+  // Run 30 weeks and confirm incidents appear and expire without crashing.
+  for (let i = 0; i < 30 && state.status === 'active'; i++) {
+    state = advanceTurn(state, ['monitor-situation']);
+    p = getPendingEvent(state);
+    if (p?.choices) state = resolvePendingEvent(state, p.id, p.choices[0].id);
+  }
+  const incidentEntries = state.timeline.filter((t) => t.type === 'map' && t.title.startsWith('Incident'));
+  check(incidentEntries.length >= 1, 'no map incidents fired in 30 weeks');
+  assertClamped(state, 'map scripted run');
+
+  // Save-migration path: a v2 save (no map fields) must come back with a map.
+  const v2 = structuredClone(state) as Partial<GameState>;
+  delete v2.map;
+  delete v2.selectedNode;
+  delete v2.pendingTargets;
+  const migrated = migrateState(v2 as GameState, 2);
+  check(migrated.map !== undefined && migrated.map.nodes['port-klang'] !== undefined, 'v2 migration did not initialize map state');
+  check(migrated.pendingTargets !== undefined && migrated.selectedNode === null, 'v2 migration did not initialize target/selection fields');
+  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v2 save migration OK`);
 }
 
 // --- 5: playability floor per difficulty --------------------------------------

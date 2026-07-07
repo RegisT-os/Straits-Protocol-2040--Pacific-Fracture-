@@ -9,8 +9,10 @@
 //      set CHROMIUM_PATH if your browser lives elsewhere.
 //
 // Flow: serve dist/ via `vite preview`, then in a real browser:
-// pick a role, start a campaign, play 8 turns (resolving interactive
-// events), save, reload, load the save, and assert zero console errors.
+// pick a role + difficulty, start a campaign, verify the strategic map
+// (node selection + detail), fire a map-targeted action with a chosen
+// target, play 8 turns (resolving interactive events), save, reload,
+// load the save, verify map state survived, and assert zero console errors.
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -72,7 +74,24 @@ try {
   await page.waitForSelector('text=Actions selected:');
   console.log('campaign started (Analyst difficulty, slot counter visible)');
 
-  for (let i = 0; i < 8; i++) {
+  // Strategic map renders; a node can be selected and shows detail.
+  await page.waitForSelector('h2:has-text("Strategic Map")');
+  const mapSection = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
+  await mapSection.locator('button:has-text("Port Klang")').first().click();
+  await page.waitForSelector('text=Connected');
+  console.log('strategic map renders, node detail opens');
+
+  // Map-targeted action: select it, pick a target, advance.
+  await page.locator('button:has-text("Coordinate ASEAN CERT Fusion Cell")').first().click();
+  await page.waitForSelector('select');
+  await page.selectOption('select', 'bnm-core');
+  await page.locator('button:has-text("Advance Week")').click();
+  await page.waitForSelector('text=Week 2/104');
+  const targetedEntry = await page.locator('text=Coordinate ASEAN CERT Fusion Cell — BNM Continuity Core').count();
+  if (targetedEntry === 0) throw new Error('targeted action did not appear in timeline with its node');
+  console.log('targeted action applied at chosen node');
+
+  for (let i = 0; i < 7; i++) {
     if (await page.locator('text=Decision required').count()) {
       await page.locator('div.fixed button').first().click();
       console.log('  resolved interactive event');
@@ -96,7 +115,12 @@ try {
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=Week 9/104');
-  console.log('save/load round-trip ok');
+  await page.waitForSelector('h2:has-text("Strategic Map")');
+  const mapAfterLoad = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
+  if ((await mapAfterLoad.locator('button:has-text("Malacca Strait")').count()) === 0) {
+    throw new Error('map state missing after reload');
+  }
+  console.log('save/load round-trip ok — map state survived');
 
   if (errors.length) throw new Error(`console errors:\n${errors.join('\n')}`);
   console.log('no console errors');

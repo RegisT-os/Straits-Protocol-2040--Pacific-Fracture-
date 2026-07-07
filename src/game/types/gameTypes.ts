@@ -98,6 +98,160 @@ export interface RoleDef {
 }
 
 // ---------------------------------------------------------------------------
+// Strategic map
+// ---------------------------------------------------------------------------
+
+export type TheatreId =
+  | 'malaysia-core'
+  | 'malacca-strait'
+  | 'south-china-sea'
+  | 'cyber-financial'
+  | 'orbital'
+  | 'asean-region'
+  | 'external';
+
+export interface TheatreInfo {
+  id: TheatreId;
+  name: string;
+  description: string;
+}
+
+export type MapNodeId =
+  // Malaysia Core
+  | 'kuala-lumpur'
+  | 'putrajaya'
+  | 'port-klang'
+  | 'johor-bahru'
+  | 'penang'
+  | 'bintulu-lng'
+  | 'sabah'
+  | 'sarawak'
+  // Malacca Strait
+  | 'malacca-strait'
+  | 'singapore-strait'
+  | 'batam-corridor'
+  | 'cable-landing-zone'
+  // South China Sea
+  | 'malaysian-eez'
+  | 'luconia-shoals'
+  | 'scs-air-sea-corridor'
+  | 'brunei-energy-corridor'
+  // Cyber-Financial Layer
+  | 'bnm-core'
+  | 'payment-rails'
+  | 'bursa-node'
+  | 'cloud-region'
+  | 'digital-id'
+  // Orbital Layer
+  | 'asean-microsat'
+  | 'commercial-satnet'
+  | 'financial-timing-link'
+  | 'maritime-imaging'
+  | 'emergency-nav-mesh'
+  // ASEAN Region
+  | 'singapore'
+  | 'jakarta'
+  | 'bangkok'
+  | 'manila'
+  // External Pressure
+  | 'taipei-command'
+  | 'china-coastal-warzone'
+  | 'us-pacom-node'
+  | 'european-front'
+  | 'russia-network-node';
+
+export type MapNodeType =
+  | 'capital'
+  | 'city'
+  | 'port'
+  | 'energy'
+  | 'sea-lane'
+  | 'eez'
+  | 'infrastructure'
+  | 'financial'
+  | 'orbital'
+  | 'external';
+
+/** Deltas applied to a node's dynamic values (all clamped 0..100). */
+export interface NodeDelta {
+  stability?: number;
+  riskLevel?: number;
+  cyberExposure?: number;
+}
+
+export interface NodeEffectDef extends NodeDelta {
+  nodeId: MapNodeId;
+}
+
+export interface IncidentSpawnDef {
+  incidentId: string;
+  nodeId: MapNodeId;
+}
+
+/** Data-side incident template. */
+export interface IncidentDef {
+  id: string;
+  title: string;
+  /** 1 minor, 2 major, 3 severe. */
+  severity: 1 | 2 | 3;
+  /** Weeks the incident stays active on the node. */
+  duration: number;
+  /** Applied to the node once, when the incident lands. */
+  onset: NodeDelta;
+  /** Applied to the node every week while active. */
+  weekly?: NodeDelta;
+  tags: string[];
+}
+
+/** State-side incident instance attached to a node. */
+export interface MapIncident {
+  id: string;
+  incidentId: string;
+  title: string;
+  severity: 1 | 2 | 3;
+  source: string;
+  startedWeek: number;
+  expiresWeek: number;
+  tags: string[];
+}
+
+export interface MapNodeDef {
+  id: MapNodeId;
+  name: string;
+  theatre: TheatreId;
+  type: MapNodeType;
+  /** Who effectively controls or dominates the node (display/logic label). */
+  owner: string;
+  /** Static strategic values 0..100 (0 = irrelevant on that axis). */
+  maritimeValue: number;
+  financialValue: number;
+  orbitalValue: number;
+  energyValue: number;
+  connectedNodes: MapNodeId[];
+  tags: string[];
+  initial: { stability: number; riskLevel: number; cyberExposure: number };
+}
+
+export interface MapNodeState {
+  id: MapNodeId;
+  stability: number;
+  riskLevel: number;
+  cyberExposure: number;
+  activeIncidents: MapIncident[];
+}
+
+export interface MapState {
+  nodes: Record<MapNodeId, MapNodeState>;
+}
+
+/** Map-targeting spec on an action: player picks one node from the list. */
+export interface ActionTargeting {
+  nodeIds: MapNodeId[];
+  effect: NodeDelta;
+  hint: string;
+}
+
+// ---------------------------------------------------------------------------
 // Delayed consequences (scheduled effects)
 // ---------------------------------------------------------------------------
 
@@ -189,6 +343,10 @@ export interface AiMoveDef {
   dynamics?: WeightDynamic[];
   /** Delayed consequences set in motion by this move. */
   schedules?: ScheduleDef[];
+  /** Map node deltas applied when the move fires. */
+  nodeEffects?: NodeEffectDef[];
+  /** Map incidents spawned when the move fires. */
+  incidents?: IncidentSpawnDef[];
 }
 
 export interface ActorDef {
@@ -261,6 +419,12 @@ export interface ActionDef {
   once?: boolean;
   /** Delayed consequences set in motion by taking this action. */
   schedules?: ScheduleDef[];
+  /** Untargeted map node deltas applied when the action is taken. */
+  nodeEffects?: NodeEffectDef[];
+  /** Map incidents spawned when the action is taken. */
+  incidents?: IncidentSpawnDef[];
+  /** If set, the player must pick one target node from the list. */
+  targeting?: ActionTargeting;
 }
 
 export interface ActionAvailability {
@@ -281,6 +445,8 @@ export interface EventChoice {
   flagsAdded?: string[];
   /** Delayed consequences set in motion by this choice. */
   schedules?: ScheduleDef[];
+  nodeEffects?: NodeEffectDef[];
+  incidents?: IncidentSpawnDef[];
   report: string;
 }
 
@@ -307,6 +473,8 @@ export interface EventDef {
   metricEffects?: MetricDelta;
   actorEffects?: ActorEffect[];
   flagsAdded?: string[];
+  nodeEffects?: NodeEffectDef[];
+  incidents?: IncidentSpawnDef[];
   choices?: EventChoice[];
 }
 
@@ -327,7 +495,8 @@ export type TimelineEntryType =
   | 'system'
   | 'phase'
   | 'risk'
-  | 'scheduled';
+  | 'scheduled'
+  | 'map';
 
 export interface TimelineEntry {
   id: string;
@@ -401,6 +570,12 @@ export interface GameState {
   actionCooldowns: Record<string, number>;
   /** Actions selected for this turn but not yet executed (survives save/load). */
   pendingActions: string[];
+  /** Chosen map targets for pending targeted actions, keyed by action id. */
+  pendingTargets: Record<string, MapNodeId>;
+  /** The strategic map. */
+  map: MapState;
+  /** Node currently inspected in the map UI (persisted for convenience). */
+  selectedNode: MapNodeId | null;
   /** Delayed consequences waiting to resolve. */
   scheduledEffects: ScheduledEffect[];
   flags: string[];

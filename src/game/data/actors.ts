@@ -52,6 +52,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'US PACOM offers backup PNT and satellite communications coverage for the Straits — contingent on basing conversations.',
         weight: 2,
+        nodeEffects: [
+          { nodeId: 'commercial-satnet', stability: 4 },
+          { nodeId: 'financial-timing-link', stability: 3 },
+        ],
         phases: [3, 4, 5],
         metricEffects: { orbitalAccess: 3, alignmentPressure: 3 },
         flagsAdded: ['us-orbital-offered'],
@@ -98,6 +102,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Sustained probing of Malaysian government and port networks, consistent with known China-nexus activity. Attribution: deniable, as always.',
         weight: 3,
+        nodeEffects: [{ nodeId: 'port-klang', cyberExposure: 3, riskLevel: 2 }],
         metricEffects: { cyberResilience: -3 },
         actorEffects: [{ actorId: 'china-frag', pressure: 3 }],
         cooldown: 3,
@@ -108,6 +113,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Chinese coast guard and maritime militia loiter near Luconia Shoals. Fishing fleets with unusual antenna arrays follow.',
         weight: 3,
+        incidents: [{ incidentId: 'china-maritime-shadowing', nodeId: 'luconia-shoals' }],
         metricEffects: { maritimeControl: -3, energyAssurance: -1 },
         actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
         cooldown: 4,
@@ -138,6 +144,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'Beijing issues a rare formal warning: facilitation of "hostile military activity" from Malaysian territory will have consequences.',
         weight: 1,
+        nodeEffects: [
+          { nodeId: 'scs-air-sea-corridor', riskLevel: 6 },
+          { nodeId: 'malaysian-eez', riskLevel: 4 },
+        ],
         phases: [3, 4, 5],
         requiresFlags: ['aligned-us'],
         metricEffects: { sovereignty: -3, mentalLoad: 5 },
@@ -186,6 +196,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Taipei offers priority wafer allocation for Malaysian packaging plants — a lifeline for Penang, a red flag for Beijing.',
         weight: 2,
+        nodeEffects: [{ nodeId: 'penang', stability: 3 }],
         phases: [2, 3, 4, 5],
         metricEffects: { financialContinuity: 3 },
         actorEffects: [
@@ -242,6 +253,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'Russian-linked networks amplify claims that a Malaysian bank has secretly failed. It has not. Withdrawals spike anyway.',
         weight: 3,
+        nodeEffects: [
+          { nodeId: 'digital-id', riskLevel: 4 },
+          { nodeId: 'kuala-lumpur', riskLevel: 2 },
+        ],
         metricEffects: { publicReality: -3, financialContinuity: -1 },
         cooldown: 4,
       },
@@ -261,6 +276,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'A Russian-speaking mercenary crew tests Malaysian financial infrastructure — freelancing, or an advertisement of services.',
         weight: 2,
+        incidents: [{ incidentId: 'russian-cyber-mercenary-probe', nodeId: 'payment-rails' }],
         phases: [2, 3, 4, 5],
         metricEffects: { cyberResilience: -3, financialContinuity: -1 },
         cooldown: 5,
@@ -271,6 +287,8 @@ export const ACTORS: ActorDef[] = [
         report:
           'After Malaysia\'s pro-European posture, Russian-linked crews hit Malaysian logistics and media with a coordinated grey-zone package.',
         weight: 3,
+        incidents: [{ incidentId: 'grey-zone-probe', nodeId: 'cloud-region' }],
+        nodeEffects: [{ nodeId: 'european-front', riskLevel: 3 }],
         requiresFlags: ['condemned-russia'],
         metricEffects: { cyberResilience: -5, publicReality: -4, energyAssurance: -3 },
         actorEffects: [{ actorId: 'russia-network', pressure: 6, aggression: 5 }],
@@ -346,6 +364,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'European officials privately warn that a second front is possible and supply chains through Europe cannot be guaranteed.',
         weight: 1,
+        nodeEffects: [{ nodeId: 'european-front', riskLevel: 5, stability: -3 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -2, mentalLoad: 3 },
         cooldown: 8,
@@ -371,6 +390,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'MAS proposes joint settlement fallback arrangements with BNM — mutual insurance against timing attacks on either system.',
         weight: 3,
+        nodeEffects: [{ nodeId: 'bnm-core', riskLevel: -4, stability: 2 }],
         dynamics: [{ metricBelow: { financialContinuity: 50 }, metricAbove: { institutionalTrust: 45 }, multiplier: 2.5 }],
         metricEffects: { financialContinuity: 3 },
         actorEffects: [{ actorId: 'singapore-authority', relationship: 3 }],
@@ -383,6 +403,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Singapore quietly tightens Causeway and Tuas screening, citing "regional conditions". Johor commuters absorb the cost.',
         weight: 2,
+        incidents: [{ incidentId: 'border-liquidity-shift', nodeId: 'singapore-strait' }],
         dynamics: [
           { metricBelow: { publicReality: 45 }, multiplier: 2 },
           { metricBelow: { institutionalTrust: 45 }, multiplier: 2 },
@@ -397,6 +418,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'Singaporean banks report record inflows of Malaysian corporate deposits. Nobody calls it capital flight in public.',
         weight: 2,
+        nodeEffects: [
+          { nodeId: 'bnm-core', riskLevel: 4 },
+          { nodeId: 'singapore', stability: 2 },
+        ],
         metricEffects: { financialContinuity: -3 },
         cooldown: 5,
       },
@@ -441,6 +466,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Indonesia convenes an emergency maritime security summit in Jakarta. Malaysia is invited — pointedly, as a participant, not co-chair.',
         weight: 3,
+        nodeEffects: [{ nodeId: 'jakarta', stability: 2 }],
         metricEffects: { aseanCohesion: 3, maritimeControl: 2 },
         actorEffects: [{ actorId: 'indonesia-maritime', relationship: 2 }],
         cooldown: 6,
@@ -451,6 +477,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Indonesian Navy surges patrols across the archipelagic sea lanes. Piracy drops; so does Malaysian visibility in shared waters.',
         weight: 2,
+        nodeEffects: [{ nodeId: 'batam-corridor', stability: 3, riskLevel: -3 }],
         metricEffects: { maritimeControl: -2, aseanCohesion: 2 },
         cooldown: 5,
       },
@@ -507,6 +534,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Foreign funds rotate out of ringgit assets. The outflow is orderly, which somehow makes it worse.',
         weight: 2,
+        incidents: [{ incidentId: 'capital-flight-pressure', nodeId: 'bnm-core' }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2.5 }],
         metricEffects: { financialContinuity: -4 },
         cooldown: 4,
@@ -517,6 +545,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'War-risk insurance premiums for Straits transits spike 40%. Shippers begin quietly rerouting.',
         weight: 2,
+        nodeEffects: [{ nodeId: 'malacca-strait', riskLevel: 5 }],
         dynamics: [{ metricBelow: { maritimeControl: 45 }, multiplier: 2.5 }],
         phases: [2, 3, 4, 5],
         metricEffects: { maritimeControl: -2, energyAssurance: -1 },
@@ -528,6 +557,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'A major rating agency places Malaysia on negative watch, citing "geopolitical positioning uncertainty".',
         weight: 2,
+        nodeEffects: [{ nodeId: 'bursa-node', riskLevel: 6, stability: -3 }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2 }],
         metricEffects: { financialContinuity: -3, institutionalTrust: -1 },
         cooldown: 8,
@@ -538,6 +568,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Interbank liquidity tightens sharply after rumours of settlement timing anomalies. BNM works the phones all night.',
         weight: 1,
+        nodeEffects: [{ nodeId: 'payment-rails', riskLevel: 6, stability: -4 }],
         dynamics: [{ metricBelow: { financialContinuity: 40 }, multiplier: 2 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -5, mentalLoad: 3 },
@@ -578,6 +609,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'An automated ransomware wave sweeps Malaysian SMEs and two state agencies. The ransom notes are polite, multilingual, and machine-generated.',
         weight: 3,
+        incidents: [{ incidentId: 'cloud-credential-cascade', nodeId: 'cloud-region' }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 1.5 }],
         metricEffects: { cyberResilience: -4, financialContinuity: -2 },
         cooldown: 4,
@@ -588,6 +620,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'A convincing deepfake of a cabinet minister "announcing" bank withdrawal limits goes viral before breakfast.',
         weight: 2,
+        incidents: [{ incidentId: 'deepfake-panic-cluster', nodeId: 'kuala-lumpur' }],
         metricEffects: { publicReality: -5, financialContinuity: -2 },
         cooldown: 6,
       },
@@ -597,6 +630,7 @@ export const ACTORS: ActorDef[] = [
         report:
           'Container handling at a Malaysian port stutters after operational technology anomalies. Manual mode. Queues at anchor.',
         weight: 2,
+        incidents: [{ incidentId: 'port-ot-degradation', nodeId: 'port-klang' }],
         dynamics: [{ metricBelow: { maritimeControl: 45 }, multiplier: 1.8 }],
         phases: [2, 3, 4, 5],
         metricEffects: { maritimeControl: -3, financialContinuity: -1 },
@@ -608,6 +642,10 @@ export const ACTORS: ActorDef[] = [
         report:
           'Coordinated fraud against digital ringgit wallets triggers a panic. Losses are small; screenshots are not.',
         weight: 2,
+        nodeEffects: [
+          { nodeId: 'digital-id', riskLevel: 6, stability: -3 },
+          { nodeId: 'payment-rails', riskLevel: 3 },
+        ],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 1.5 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -3, publicReality: -2 },
