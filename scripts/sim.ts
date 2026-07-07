@@ -21,6 +21,7 @@ import { EVENTS } from '../src/game/data/events';
 import { INCIDENTS } from '../src/game/data/incidents';
 import { MAP_NODES } from '../src/game/data/mapNodes';
 import { PRESSURE_CAMPAIGNS } from '../src/game/data/pressureCampaigns';
+import { WAR_FRONTS } from '../src/game/data/warFronts';
 import { getActionAvailability, getActionSlots } from '../src/game/engine/actionEngine';
 import { addIncidents, applyNodeDelta, tickMap } from '../src/game/engine/mapEngine';
 import {
@@ -28,6 +29,8 @@ import {
   startPressureCampaigns,
   tickPressureCampaigns,
 } from '../src/game/engine/pressureCampaignEngine';
+import { applyWarFrontEffects, deriveWarFrontStatus, tickWarFronts } from '../src/game/engine/warFrontEngine';
+import { Rng } from '../src/game/engine/rng';
 import {
   advanceTurn,
   resolvePendingEvent,
@@ -49,6 +52,8 @@ import type {
   PressureCampaignStartDef,
   PressureCampaignTemplateId,
   RoleId,
+  WarFrontEffect,
+  WarFrontId,
 } from '../src/game/types/gameTypes';
 
 const ROLES: RoleId[] = [
@@ -91,11 +96,30 @@ function assertClamped(state: GameState, label: string): void {
       `${label}: campaign ${campaign.id} week out of range (${campaign.currentWeek}/${campaign.durationWeeks})`,
     );
   }
+  for (const front of Object.values(state.warFronts)) {
+    check(
+      front.intensity >= 0 && front.intensity <= 100,
+      `${label}: front ${front.id} intensity out of range (${front.intensity})`,
+    );
+    check(
+      front.momentum >= -100 && front.momentum <= 100,
+      `${label}: front ${front.id} momentum out of range (${front.momentum})`,
+    );
+    check(
+      front.escalationLevel >= 1 && front.escalationLevel <= 5,
+      `${label}: front ${front.id} escalation out of range (${front.escalationLevel})`,
+    );
+    check(
+      front.status === deriveWarFrontStatus(front.intensity),
+      `${label}: front ${front.id} status does not match intensity`,
+    );
+  }
 }
 
 const NODE_IDS = new Set<MapNodeId>(MAP_NODES.map((node) => node.id));
 const INCIDENT_IDS = new Set(INCIDENTS.map((incident) => incident.id));
 const PRESSURE_CAMPAIGN_IDS = new Set(PRESSURE_CAMPAIGNS.map((campaign) => campaign.id));
+const WAR_FRONT_IDS = new Set<WarFrontId>(WAR_FRONTS.map((front) => front.id));
 
 function checkNodeEffects(label: string, effects: NodeEffectDef[] | undefined): void {
   for (const effect of effects ?? []) {
@@ -119,9 +143,16 @@ function checkPressureCampaignStarts(label: string, starts: PressureCampaignStar
   }
 }
 
+function checkWarFrontEffects(label: string, effects: WarFrontEffect[] | undefined): void {
+  for (const effect of effects ?? []) {
+    check(WAR_FRONT_IDS.has(effect.frontId), `${label}: invalid war front ${effect.frontId}`);
+  }
+}
+
 function validateActionMapRefs(action: ActionDef): void {
   checkNodeEffects(`action ${action.id}`, action.nodeEffects);
   checkIncidentSpawns(`action ${action.id}`, action.incidents);
+  checkWarFrontEffects(`action ${action.id}`, action.warFrontEffects);
   if (action.targeting) {
     check(action.targeting.nodeIds.length > 0, `action ${action.id}: targeting has no node options`);
     for (const nodeId of action.targeting.nodeIds) {
@@ -134,18 +165,21 @@ function validateMoveMapRefs(actorId: string, move: AiMoveDef): void {
   checkNodeEffects(`actor ${actorId} move ${move.id}`, move.nodeEffects);
   checkIncidentSpawns(`actor ${actorId} move ${move.id}`, move.incidents);
   checkPressureCampaignStarts(`actor ${actorId} move ${move.id}`, move.pressureCampaigns);
+  checkWarFrontEffects(`actor ${actorId} move ${move.id}`, move.warFrontEffects);
 }
 
 function validateChoiceMapRefs(eventId: string, choice: EventChoice): void {
   checkNodeEffects(`event ${eventId} choice ${choice.id}`, choice.nodeEffects);
   checkIncidentSpawns(`event ${eventId} choice ${choice.id}`, choice.incidents);
   checkPressureCampaignStarts(`event ${eventId} choice ${choice.id}`, choice.pressureCampaigns);
+  checkWarFrontEffects(`event ${eventId} choice ${choice.id}`, choice.warFrontEffects);
 }
 
 function validateEventMapRefs(event: EventDef): void {
   checkNodeEffects(`event ${event.id}`, event.nodeEffects);
   checkIncidentSpawns(`event ${event.id}`, event.incidents);
   checkPressureCampaignStarts(`event ${event.id}`, event.pressureCampaigns);
+  checkWarFrontEffects(`event ${event.id}`, event.warFrontEffects);
   for (const choice of event.choices ?? []) validateChoiceMapRefs(event.id, choice);
 }
 
@@ -173,6 +207,18 @@ function validateDataReferences(): void {
     check(campaign.counterActionTags.length > 0, `pressure campaign ${campaign.id}: missing counter tags`);
     checkNodeEffects(`pressure campaign ${campaign.id} completion`, campaign.completionEffects.nodeEffects);
     checkNodeEffects(`pressure campaign ${campaign.id} disruption`, campaign.disruptionEffects.nodeEffects);
+  }
+  check(WAR_FRONT_IDS.size === WAR_FRONTS.length, 'duplicate war front ids');
+  for (const front of WAR_FRONTS) {
+    check(front.intensity >= 0 && front.intensity <= 100, `war front ${front.id}: invalid intensity`);
+    check(front.momentum >= -100 && front.momentum <= 100, `war front ${front.id}: invalid momentum`);
+    check(front.escalationLevel >= 1 && front.escalationLevel <= 5, `war front ${front.id}: invalid escalation`);
+    for (const actorId of front.linkedActors) {
+      check(ACTORS.some((actor) => actor.id === actorId), `war front ${front.id}: invalid actor ${actorId}`);
+    }
+    for (const nodeId of front.linkedMapNodes) {
+      check(NODE_IDS.has(nodeId), `war front ${front.id}: invalid linked node ${nodeId}`);
+    }
   }
   for (const action of ACTIONS) validateActionMapRefs(action);
   for (const actor of ACTORS) {
@@ -306,6 +352,7 @@ const deterministic =
   JSON.stringify(a.metrics) === JSON.stringify(b.metrics) &&
   JSON.stringify(a.map) === JSON.stringify(b.map) &&
   JSON.stringify(a.activePressureCampaigns) === JSON.stringify(b.activePressureCampaigns) &&
+  JSON.stringify(a.warFronts) === JSON.stringify(b.warFronts) &&
   JSON.stringify(a.timeline) === JSON.stringify(b.timeline) &&
   a.ending?.endingId === b.ending?.endingId &&
   a.week === b.week;
@@ -337,6 +384,52 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   console.log(
     `\nScheduled effects: ${queued} queued, ${resolved.length} resolved by week ${state.week} — OK`,
   );
+}
+
+// --- 4a: global war fronts initialize, clamp, tick, and spill over ------------
+{
+  const state = createInitialState('security-consultant', 14, 'adviser');
+  check(Object.keys(state.warFronts).length === WAR_FRONTS.length, 'war fronts did not initialize');
+  check(deriveWarFrontStatus(10) === 'stable', 'front status threshold stable failed');
+  check(deriveWarFrontStatus(40) === 'escalating', 'front status threshold escalating failed');
+  check(deriveWarFrontStatus(65) === 'crisis', 'front status threshold crisis failed');
+  check(deriveWarFrontStatus(90) === 'breaking', 'front status threshold breaking failed');
+
+  applyWarFrontEffects(
+    state,
+    [
+      { frontId: 'cyber-war-front', intensity: 999, momentum: 999, escalation: 9 },
+      { frontId: 'financial-war-front', intensity: -999, momentum: -999, escalation: -9 },
+    ],
+    'sim',
+  );
+  check(state.warFronts['cyber-war-front'].intensity === 100, 'war front intensity did not clamp high');
+  check(state.warFronts['cyber-war-front'].momentum === 100, 'war front momentum did not clamp high');
+  check(state.warFronts['cyber-war-front'].escalationLevel === 5, 'war front escalation did not clamp high');
+  check(state.warFronts['financial-war-front'].intensity === 0, 'war front intensity did not clamp low');
+  check(state.warFronts['financial-war-front'].momentum === -100, 'war front momentum did not clamp low');
+  check(state.warFronts['financial-war-front'].escalationLevel === 1, 'war front escalation did not clamp low');
+
+  const tickA = createInitialState('security-consultant', 21, 'adviser');
+  const tickB = createInitialState('security-consultant', 21, 'adviser');
+  const rngA = new Rng(tickA.seed, tickA.rngCursor);
+  const rngB = new Rng(tickB.seed, tickB.rngCursor);
+  tickWarFronts(tickA, rngA);
+  tickWarFronts(tickB, rngB);
+  check(JSON.stringify(tickA.warFronts) === JSON.stringify(tickB.warFronts), 'war front tick was not deterministic');
+  check(rngA.cursor === rngB.cursor, 'war front tick consumed different RNG cursor counts');
+
+  const spill = createInitialState('security-consultant', 22, 'adviser');
+  spill.warFronts['cyber-war-front'].intensity = 88;
+  spill.warFronts['cyber-war-front'].momentum = 20;
+  tickWarFronts(spill, new Rng(spill.seed, spill.rngCursor));
+  const cloudCampaigns = spill.activePressureCampaigns.filter(
+    (campaign) => campaign.templateId === 'threat-cloud-banking-wave',
+  );
+  check(cloudCampaigns.length === 1, 'high cyber front did not start cloud-banking pressure campaign');
+  assertClamped(spill, 'war-front spillover');
+
+  console.log('\nWar fronts: init, status, clamping, deterministic tick, and spillover OK');
 }
 
 // --- 4b: theatre pressure campaigns start, refresh, tick, complete, disrupt ---
@@ -488,16 +581,18 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   check(incidentEntries.length >= 1, 'no map incidents fired in 30 weeks');
   assertClamped(state, 'map scripted run');
 
-  // Save-migration path: a v2 save (no map fields) must come back with a map.
+  // Save-migration path: a v2 save (no map/front fields) must come back repaired.
   const v2 = structuredClone(state) as Partial<GameState>;
   delete v2.map;
   delete v2.selectedNode;
   delete v2.pendingTargets;
   delete v2.activePressureCampaigns;
+  delete v2.warFronts;
   const migrated = migrateState(v2 as GameState, 2);
   check(migrated.map !== undefined && migrated.map.nodes['port-klang'] !== undefined, 'v2 migration did not initialize map state');
   check(migrated.pendingTargets !== undefined && migrated.selectedNode === null, 'v2 migration did not initialize target/selection fields');
   check(migrated.activePressureCampaigns.length === 0, 'v2 migration did not initialize pressure campaigns');
+  check(Object.keys(migrated.warFronts).length === WAR_FRONTS.length, 'v2 migration did not initialize war fronts');
 
   const v1 = structuredClone(state) as Partial<GameState>;
   delete v1.difficulty;
@@ -508,11 +603,13 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   delete v1.selectedNode;
   delete v1.pendingTargets;
   delete v1.activePressureCampaigns;
+  delete v1.warFronts;
   const migratedV1 = migrateState(v1 as GameState, 1);
   check(migratedV1.difficulty === 'adviser', 'v1 migration did not default difficulty');
   check(migratedV1.map.nodes['port-klang'] !== undefined, 'v1 migration did not initialize map state');
   check(Array.isArray(migratedV1.pendingActions), 'v1 migration did not initialize pending actions');
   check(Array.isArray(migratedV1.activePressureCampaigns), 'v1 migration did not initialize pressure campaigns');
+  check(Object.keys(migratedV1.warFronts).length === WAR_FRONTS.length, 'v1 migration did not initialize war fronts');
 
   const corruptV3 = structuredClone(state) as GameState;
   delete (corruptV3.map.nodes as Partial<Record<MapNodeId, unknown>>)['port-klang'];
@@ -601,7 +698,20 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
     'v4 repair left a zero-intensity pressure campaign active',
   );
 
-  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3/v4 save migration OK`);
+  const corruptV5 = structuredClone(state) as GameState;
+  corruptV5.warFronts['pacific-war-front'].intensity = 999;
+  corruptV5.warFronts['pacific-war-front'].momentum = 999;
+  corruptV5.warFronts['pacific-war-front'].escalationLevel = 99 as typeof corruptV5.warFronts['pacific-war-front']['escalationLevel'];
+  corruptV5.warFronts['pacific-war-front'].status = 'stable';
+  delete (corruptV5.warFronts as Partial<typeof corruptV5.warFronts>)['orbital-war-front'];
+  const repairedV5 = migrateState(corruptV5, 5);
+  check(repairedV5.warFronts['pacific-war-front'].intensity === 100, 'v5 repair did not clamp front intensity');
+  check(repairedV5.warFronts['pacific-war-front'].momentum === 100, 'v5 repair did not clamp front momentum');
+  check(repairedV5.warFronts['pacific-war-front'].escalationLevel === 5, 'v5 repair did not clamp front escalation');
+  check(repairedV5.warFronts['pacific-war-front'].status === 'breaking', 'v5 repair did not derive front status');
+  check(repairedV5.warFronts['orbital-war-front'] !== undefined, 'v5 repair did not restore missing front');
+
+  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3/v4/v5 save migration OK`);
 }
 
 // --- 5: playability floor per difficulty --------------------------------------

@@ -252,6 +252,64 @@ export interface ActionTargeting {
 }
 
 // ---------------------------------------------------------------------------
+// Global war fronts
+// ---------------------------------------------------------------------------
+
+export type WarFrontId =
+  | 'pacific-war-front'
+  | 'european-pressure-front'
+  | 'orbital-war-front'
+  | 'cyber-war-front'
+  | 'maritime-war-front'
+  | 'financial-war-front';
+
+export type WarFrontStatus = 'stable' | 'escalating' | 'crisis' | 'breaking';
+
+export interface WarFrontEffect {
+  frontId: WarFrontId;
+  intensity?: number;
+  momentum?: number;
+  escalation?: number;
+  modifier?: string;
+}
+
+export interface WarFrontDef {
+  id: WarFrontId;
+  name: string;
+  description: string;
+  theatre: TheatreId;
+  intensity: number;
+  momentum: number;
+  escalationLevel: 1 | 2 | 3 | 4 | 5;
+  dominantSide: string;
+  linkedActors: ActorId[];
+  linkedMapNodes: MapNodeId[];
+  linkedMetrics: MetricKey[];
+  activeModifiers: string[];
+  tags: string[];
+}
+
+export interface WarFrontState {
+  id: WarFrontId;
+  name: string;
+  description: string;
+  theatre: TheatreId;
+  intensity: number;
+  momentum: number;
+  escalationLevel: 1 | 2 | 3 | 4 | 5;
+  dominantSide: string;
+  status: WarFrontStatus;
+  linkedActors: ActorId[];
+  linkedMapNodes: MapNodeId[];
+  linkedMetrics: MetricKey[];
+  activeModifiers: string[];
+  lastShiftWeek: number;
+  tags: string[];
+}
+
+export type WarFrontStateMap = Record<WarFrontId, WarFrontState>;
+
+// ---------------------------------------------------------------------------
 // Theatre pressure campaigns
 // ---------------------------------------------------------------------------
 
@@ -417,6 +475,8 @@ export interface AiMoveDef {
   incidents?: IncidentSpawnDef[];
   /** Theatre pressure campaigns started or intensified when the move fires. */
   pressureCampaigns?: PressureCampaignStartDef[];
+  /** Global war-front pressure changes caused by this move. */
+  warFrontEffects?: WarFrontEffect[];
 }
 
 export interface ActorDef {
@@ -495,6 +555,8 @@ export interface ActionDef {
   incidents?: IncidentSpawnDef[];
   /** If set, the player must pick one target node from the list. */
   targeting?: ActionTargeting;
+  /** Global war-front pressure changes caused by this action. */
+  warFrontEffects?: WarFrontEffect[];
 }
 
 export interface ActionAvailability {
@@ -518,6 +580,7 @@ export interface EventChoice {
   nodeEffects?: NodeEffectDef[];
   incidents?: IncidentSpawnDef[];
   pressureCampaigns?: PressureCampaignStartDef[];
+  warFrontEffects?: WarFrontEffect[];
   report: string;
 }
 
@@ -547,6 +610,7 @@ export interface EventDef {
   nodeEffects?: NodeEffectDef[];
   incidents?: IncidentSpawnDef[];
   pressureCampaigns?: PressureCampaignStartDef[];
+  warFrontEffects?: WarFrontEffect[];
   choices?: EventChoice[];
 }
 
@@ -652,6 +716,8 @@ export interface GameState {
   scheduledEffects: ScheduledEffect[];
   /** Multi-week theatre or node pressure campaigns currently tracked. */
   activePressureCampaigns: ActivePressureCampaign[];
+  /** Off-map world-war fronts that spill pressure into Malaysia and ASEAN. */
+  warFronts: WarFrontStateMap;
   flags: string[];
   ending: EndingResult | null;
 }

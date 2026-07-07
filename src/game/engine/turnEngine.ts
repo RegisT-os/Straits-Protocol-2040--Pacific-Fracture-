@@ -28,6 +28,7 @@ import {
   disruptPressureCampaignsForAction,
   tickPressureCampaigns,
 } from './pressureCampaignEngine';
+import { applyWarFrontEffects, tickWarFronts } from './warFrontEngine';
 
 function cloneState(state: GameState): GameState {
   return structuredClone(state);
@@ -99,7 +100,7 @@ function applyPassiveDrift(state: GameState, difficulty: DifficultyDef): void {
  * Pure with respect to the input state (deep-cloned).
  *
  * Order per turn:
- *  1. phase determination, 2. passive drift + map/campaign tick/pressure,
+ *  1. phase determination, 2. passive drift + map/campaign/front tick/pressure,
  *  3. cooldown ticks, 4. player actions (up to slot count),
  *  5. scheduled effects due, 6. AI moves, 7. event trigger,
  *  8. ending check, 9. week increment + phase transition.
@@ -122,10 +123,11 @@ export function advanceTurn(
   // 1. Phase is derived from the current week.
   next.phase = phaseForWeek(next.week);
 
-  // 2. Passive drift, then the map and campaigns grind and push back on metrics.
+  // 2. Passive drift, then the map, campaigns and global fronts grind.
   applyPassiveDrift(next, difficulty);
   tickMap(next);
   tickPressureCampaigns(next);
+  tickWarFronts(next, rng);
   applyMapPressureOnMetrics(next);
 
   // 3. Cooldown ticks.
@@ -149,6 +151,7 @@ export function advanceTurn(
     addIncidents(next, action.incidents, action.name);
     if (action.targeting && target) applyActionTarget(next, action, target);
     disruptPressureCampaignsForAction(next, action);
+    applyWarFrontEffects(next, action.warFrontEffects, action.name);
   }
   next.pendingActions = [];
   next.pendingTargets = {};

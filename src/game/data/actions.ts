@@ -23,6 +23,7 @@ export const ACTIONS: ActionDef[] = [
       { nodeId: 'digital-id', riskLevel: -3 },
     ],
     metricEffects: { cyberResilience: 8, institutionalTrust: 2, mentalLoad: 4, financialContinuity: -2 },
+    warFrontEffects: [{ frontId: 'cyber-war-front', intensity: -5, momentum: -8, modifier: 'National cyber shield' }],
     cooldown: 6,
   },
   {
@@ -38,6 +39,7 @@ export const ACTIONS: ActionDef[] = [
     roleRestriction: ['finance-operator'],
     metricEffects: { financialContinuity: 8, institutionalTrust: 3, publicReality: 2, personalStamina: -4 },
     actorEffects: [{ actorId: 'financial-markets', pressure: -6 }],
+    warFrontEffects: [{ frontId: 'financial-war-front', intensity: -6, momentum: -8, modifier: 'BNM confidence operation' }],
     cooldown: 4,
   },
   {
@@ -49,6 +51,11 @@ export const ACTIONS: ActionDef[] = [
     roleRestriction: ['policy-strategist'],
     metricEffects: { aseanCohesion: 8, institutionalTrust: 2, personalStamina: -3 },
     actorEffects: [{ actorId: 'indonesia-maritime', relationship: 4 }],
+    warFrontEffects: [
+      { frontId: 'pacific-war-front', intensity: -3, momentum: -5, modifier: 'ASEAN backchannel' },
+      { frontId: 'maritime-war-front', intensity: -2, momentum: -4, modifier: 'ASEAN deconfliction' },
+      { frontId: 'european-pressure-front', intensity: -2, momentum: -3, modifier: 'Neutral forum cover' },
+    ],
     cooldown: 3,
   },
   {
@@ -78,6 +85,10 @@ export const ACTIONS: ActionDef[] = [
       hint: 'Focus the campaign on',
     },
     metricEffects: { publicReality: 8, institutionalTrust: 3, personalStamina: -5, mentalLoad: 3 },
+    warFrontEffects: [
+      { frontId: 'cyber-war-front', intensity: -3, momentum: -5, modifier: 'Public reality campaign' },
+      { frontId: 'european-pressure-front', intensity: -2, momentum: -3, modifier: 'Disinformation dampening' },
+    ],
     schedules: [
       {
         id: 'public-trust-stabilization',
@@ -107,6 +118,10 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'china-frag', pressure: 5 },
     ],
     flagsAdded: ['aligned-us'],
+    warFrontEffects: [
+      { frontId: 'orbital-war-front', intensity: -4, momentum: -6, modifier: 'US orbital coverage' },
+      { frontId: 'pacific-war-front', intensity: 3, momentum: 4, modifier: 'US alignment signal' },
+    ],
     schedules: [
       {
         id: 'alignment-dependency-debate',
@@ -132,6 +147,10 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'china-frag', pressure: -3 },
     ],
     flagsAdded: ['strict-neutrality'],
+    warFrontEffects: [
+      { frontId: 'pacific-war-front', intensity: -2, momentum: -4, modifier: 'Strict neutrality' },
+      { frontId: 'european-pressure-front', intensity: -3, momentum: -4, modifier: 'Strict neutrality' },
+    ],
     cooldown: 4,
   },
   {
@@ -187,6 +206,10 @@ export const ACTIONS: ActionDef[] = [
     metricEffects: { financialContinuity: 7, cyberResilience: 3, sovereignty: -3 },
     actorEffects: [{ actorId: 'singapore-authority', relationship: 8, pressure: -4 }],
     flagsAdded: ['singapore-lifeline'],
+    warFrontEffects: [
+      { frontId: 'financial-war-front', intensity: -4, momentum: -6, modifier: 'BNM-MAS continuity' },
+      { frontId: 'maritime-war-front', intensity: -2, momentum: -3, modifier: 'Singapore continuity channel' },
+    ],
     cooldown: 8,
   },
   {
@@ -218,6 +241,7 @@ export const ACTIONS: ActionDef[] = [
     roleRestriction: ['military-liaison'],
     metricEffects: { maritimeControl: 8, energyAssurance: 2, alignmentPressure: 2 },
     actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
+    warFrontEffects: [{ frontId: 'maritime-war-front', intensity: -4, momentum: -5, modifier: 'Maritime drone patrols' }],
     risk: {
       label: 'At-sea incident with Chinese militia',
       chance: 0.25,
@@ -239,6 +263,7 @@ export const ACTIONS: ActionDef[] = [
       hint: 'Pre-position reserves at',
     },
     metricEffects: { energyAssurance: 9, financialContinuity: -4, institutionalTrust: 2 },
+    warFrontEffects: [{ frontId: 'maritime-war-front', intensity: -2, momentum: -3, modifier: 'Energy routing buffers' }],
     cooldown: 8,
   },
   {
@@ -254,6 +279,7 @@ export const ACTIONS: ActionDef[] = [
     roleRestriction: ['intelligence-officer', 'security-consultant'],
     metricEffects: { cyberResilience: 6, financialContinuity: 2, personalStamina: -4 },
     actorEffects: [{ actorId: 'threat-ecosystem', aggression: -8, pressure: -5 }],
+    warFrontEffects: [{ frontId: 'cyber-war-front', intensity: -4, momentum: -6, modifier: 'Threat-network takedown' }],
     risk: {
       label: 'Attribution scandal',
       chance: 0.3,
@@ -310,6 +336,10 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'china-frag', relationship: 2, pressure: -3 },
     ],
     flagsAdded: ['rejected-alignment'],
+    warFrontEffects: [
+      { frontId: 'pacific-war-front', intensity: -3, momentum: -4, modifier: 'Alignment rejection' },
+      { frontId: 'european-pressure-front', intensity: -2, momentum: -3, modifier: 'Alignment rejection' },
+    ],
     cooldown: 10,
   },
   {
@@ -328,6 +358,7 @@ export const ACTIONS: ActionDef[] = [
     metricEffects: { cyberResilience: 7, aseanCohesion: 5, mentalLoad: 4 },
     actorEffects: [{ actorId: 'threat-ecosystem', pressure: -4 }],
     flagsAdded: ['asean-cert-cell'],
+    warFrontEffects: [{ frontId: 'cyber-war-front', intensity: -5, momentum: -7, modifier: 'ASEAN CERT fusion' }],
     cooldown: 6,
   },
   {

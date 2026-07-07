@@ -16,6 +16,7 @@ import {
 import { scheduleEffects } from './scheduleEngine';
 import { addIncidents, applyNodeEffects } from './mapEngine';
 import { startPressureCampaigns } from './pressureCampaignEngine';
+import { applyWarFrontEffects } from './warFrontEngine';
 
 /** Chance that any event fires on a given turn. */
 const EVENT_CHANCE = 0.6;
@@ -87,6 +88,7 @@ export function maybeTriggerEvent(state: GameState, rng: Rng, difficulty: Diffic
   applyNodeEffects(state, event.nodeEffects);
   addIncidents(state, event.incidents, event.title);
   startPressureCampaigns(state, event.pressureCampaigns, event.title);
+  applyWarFrontEffects(state, event.warFrontEffects, event.title);
 
   state.timeline.push(
     makeTimelineEntry(state, {
@@ -123,6 +125,7 @@ export function resolveEventChoice(state: GameState, event: EventDef, choice: Ev
   applyNodeEffects(state, choice.nodeEffects);
   addIncidents(state, choice.incidents, event.title);
   startPressureCampaigns(state, choice.pressureCampaigns, event.title);
+  applyWarFrontEffects(state, choice.warFrontEffects, event.title);
 
   state.timeline.push(
     makeTimelineEntry(state, {

@@ -11,10 +11,10 @@
 // Flow: serve dist/ via `vite preview`, then in a real browser:
 // pick a role + difficulty, start a campaign, verify the strategic map
 // (node selection + detail), fire a map-targeted action with a chosen
-// target, verify the Active Campaigns panel, inject a deterministic pressure
-// campaign, play 8 turns (resolving interactive events), save, reload,
-// load the save, verify map/campaign state survived, and assert zero console
-// errors.
+// target, verify the War Fronts and Active Campaigns panels, inject a
+// deterministic pressure campaign, play 8 turns (resolving interactive
+// events), save, reload, load the save, verify map/campaign/front state
+// survived, and assert zero console errors.
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -81,8 +81,10 @@ try {
   await page.click('button:has-text("Start Campaign")');
   await page.waitForSelector('text=Week 1/104');
   await page.waitForSelector('text=Actions selected:');
+  await page.waitForSelector('h2:has-text("War Fronts")');
+  await page.waitForSelector('text=Pacific War Front');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
-  console.log('campaign started (Analyst difficulty, slot counter visible)');
+  console.log('campaign started (Analyst difficulty, slot counter and war fronts visible)');
 
   // Strategic map renders; a node can be selected and shows detail.
   await page.waitForSelector('h2:has-text("Strategic Map")');
@@ -106,7 +108,7 @@ try {
     const raw = localStorage.getItem(key);
     if (!raw) throw new Error('save missing before campaign injection');
     const envelope = JSON.parse(raw);
-    envelope.version = 4;
+    envelope.version = 5;
     envelope.state.activePressureCampaigns = [
       {
         id: 'smoke-china-scs-campaign',
@@ -137,6 +139,12 @@ try {
   await page.waitForSelector('text=INT 2');
   console.log('active campaigns panel renders and campaign save/load works');
 
+  const frontBeforeTurns = await page.evaluate(() => {
+    const raw = localStorage.getItem('straits-protocol-2040-save');
+    if (!raw) throw new Error('save missing before front snapshot');
+    return JSON.parse(raw).state.warFronts['pacific-war-front'].intensity;
+  });
+
   for (let i = 0; i < 7; i++) {
     if (await page.locator('text=Decision required').count()) {
       await page.locator('div.fixed button').first().click();
@@ -153,6 +161,16 @@ try {
   const week = (await page.locator('span:has-text("Week")').first().textContent())?.trim();
   console.log(`after 8 turns: ${week}`);
   if (!week?.startsWith('Week 9/')) throw new Error(`expected Week 9, got "${week}"`);
+  const frontAfterTurns = await page.evaluate(() => {
+    const raw = localStorage.getItem('straits-protocol-2040-save');
+    if (!raw) throw new Error('save missing after front turns');
+    return JSON.parse(raw).state.warFronts['pacific-war-front'].intensity;
+  });
+  const frontShiftEntries = await page.locator('text=War front shift').count();
+  if (frontAfterTurns === frontBeforeTurns && frontShiftEntries === 0) {
+    throw new Error('war fronts did not update or report a shift after turns');
+  }
+  console.log('war fronts update over turns');
 
   if (await page.locator('text=Decision required').count()) {
     await page.locator('div.fixed button').first().click();
@@ -166,6 +184,8 @@ try {
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=Week 9/104');
   await page.waitForSelector('h2:has-text("Strategic Map")');
+  await page.waitForSelector('h2:has-text("War Fronts")');
+  await page.waitForSelector('text=Pacific War Front');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
   const mapAfterLoad = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
   if ((await mapAfterLoad.locator('button:has-text("Malacca Strait")').count()) === 0) {
@@ -174,7 +194,13 @@ try {
   if ((await page.locator('text=South China Sea Coercion Campaign').count()) === 0) {
     throw new Error('campaign state missing after reload');
   }
-  console.log('save/load round-trip ok - map and campaign state survived');
+  const frontsAfterLoad = await page.evaluate(() => {
+    const raw = localStorage.getItem('straits-protocol-2040-save');
+    if (!raw) throw new Error('save missing after reload');
+    return Object.keys(JSON.parse(raw).state.warFronts ?? {}).length;
+  });
+  if (frontsAfterLoad !== 6) throw new Error(`expected 6 war fronts after reload, got ${frontsAfterLoad}`);
+  console.log('save/load round-trip ok - map, campaign, and war front state survived');
 
   if (errors.length) throw new Error(`console errors:\n${errors.join('\n')}`);
   console.log('no console errors');

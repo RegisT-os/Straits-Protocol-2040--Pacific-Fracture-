@@ -23,6 +23,10 @@ export const ACTORS: ActorDef[] = [
         metricEffects: { alignmentPressure: 4 },
         actorEffects: [{ actorId: 'us-pacom', relationship: 3 }],
         flagsAdded: ['us-package-offered'],
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: -2, momentum: -3, modifier: 'US cyber assistance' },
+          { frontId: 'pacific-war-front', intensity: 1, momentum: 2, modifier: 'US security offer' },
+        ],
         cooldown: 8,
       },
       {
@@ -33,6 +37,7 @@ export const ACTORS: ActorDef[] = [
         weight: 3,
         metricEffects: { alignmentPressure: 6, sovereignty: -2 },
         actorEffects: [{ actorId: 'us-pacom', pressure: 6 }],
+        warFrontEffects: [{ frontId: 'pacific-war-front', intensity: 3, momentum: 4, modifier: 'US alignment request' }],
         cooldown: 4,
       },
       {
@@ -44,6 +49,10 @@ export const ACTORS: ActorDef[] = [
         phases: [2, 3, 4, 5],
         metricEffects: { financialContinuity: -3, alignmentPressure: 4 },
         actorEffects: [{ actorId: 'us-pacom', pressure: 5, relationship: -2 }],
+        warFrontEffects: [
+          { frontId: 'european-pressure-front', intensity: 2, momentum: 3, modifier: 'Secondary sanctions' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 3, modifier: 'Sanctions compliance risk' },
+        ],
         cooldown: 6,
       },
       {
@@ -59,6 +68,10 @@ export const ACTORS: ActorDef[] = [
         phases: [3, 4, 5],
         metricEffects: { orbitalAccess: 3, alignmentPressure: 3 },
         flagsAdded: ['us-orbital-offered'],
+        warFrontEffects: [
+          { frontId: 'orbital-war-front', intensity: -2, momentum: -2, modifier: 'US orbital coverage' },
+          { frontId: 'pacific-war-front', intensity: 2, momentum: 3, modifier: 'US orbital leverage' },
+        ],
         cooldown: 8,
       },
       {
@@ -72,6 +85,10 @@ export const ACTORS: ActorDef[] = [
         actorEffects: [
           { actorId: 'us-pacom', pressure: 4 },
           { actorId: 'china-frag', pressure: 4 },
+        ],
+        warFrontEffects: [
+          { frontId: 'pacific-war-front', intensity: 4, momentum: 5, modifier: 'Port-access contest' },
+          { frontId: 'maritime-war-front', intensity: 2, momentum: 3, modifier: 'US logistics pressure' },
         ],
         cooldown: 6,
       },
@@ -105,6 +122,10 @@ export const ACTORS: ActorDef[] = [
         nodeEffects: [{ nodeId: 'port-klang', cyberExposure: 3, riskLevel: 2 }],
         metricEffects: { cyberResilience: -3 },
         actorEffects: [{ actorId: 'china-frag', pressure: 3 }],
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 4, momentum: 4, modifier: 'China cyber probing' },
+          { frontId: 'pacific-war-front', intensity: 1, momentum: 2, modifier: 'China cyber pressure' },
+        ],
         cooldown: 3,
       },
       {
@@ -117,6 +138,10 @@ export const ACTORS: ActorDef[] = [
         pressureCampaigns: [{ templateId: 'china-scs-coercion' }],
         metricEffects: { maritimeControl: -3, energyAssurance: -1 },
         actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
+        warFrontEffects: [
+          { frontId: 'pacific-war-front', intensity: 3, momentum: 4, modifier: 'SCS coercion' },
+          { frontId: 'maritime-war-front', intensity: 4, momentum: 5, modifier: 'Luconia pressure' },
+        ],
         cooldown: 4,
       },
       {
@@ -126,6 +151,7 @@ export const ACTORS: ActorDef[] = [
           'Coordinated inauthentic networks push "ASEAN neutrality means rejecting Washington" narratives into Malaysian feeds.',
         weight: 2,
         metricEffects: { publicReality: -3, aseanCohesion: -1 },
+        warFrontEffects: [{ frontId: 'cyber-war-front', intensity: 2, momentum: 2, modifier: 'Information pressure' }],
         cooldown: 4,
       },
       {
@@ -137,6 +163,10 @@ export const ACTORS: ActorDef[] = [
         phases: [2, 3, 4, 5],
         metricEffects: { financialContinuity: -3, energyAssurance: -1 },
         actorEffects: [{ actorId: 'china-frag', pressure: 4 }],
+        warFrontEffects: [
+          { frontId: 'financial-war-front', intensity: 3, momentum: 3, modifier: 'China economic coercion' },
+          { frontId: 'pacific-war-front', intensity: 2, momentum: 2, modifier: 'Export coercion' },
+        ],
         cooldown: 6,
       },
       {
@@ -153,6 +183,10 @@ export const ACTORS: ActorDef[] = [
         requiresFlags: ['aligned-us'],
         metricEffects: { sovereignty: -3, mentalLoad: 5 },
         actorEffects: [{ actorId: 'china-frag', pressure: 8, aggression: 5 }],
+        warFrontEffects: [
+          { frontId: 'pacific-war-front', intensity: 5, momentum: 6, escalation: 1, modifier: 'China escalation warning' },
+          { frontId: 'maritime-war-front', intensity: 4, momentum: 5, modifier: 'SCS escalation warning' },
+        ],
         cooldown: 10,
       },
     ],
@@ -179,6 +213,7 @@ export const ACTORS: ActorDef[] = [
         phases: [2, 3, 4, 5],
         metricEffects: { alignmentPressure: 3 },
         actorEffects: [{ actorId: 'taiwan-allied', pressure: 3 }],
+        warFrontEffects: [{ frontId: 'pacific-war-front', intensity: 3, momentum: 3, modifier: 'Taiwan support request' }],
         cooldown: 6,
       },
       {
@@ -189,6 +224,10 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         metricEffects: { cyberResilience: 3 },
         actorEffects: [{ actorId: 'taiwan-allied', relationship: 3 }],
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: -2, momentum: -2, modifier: 'Taiwan cyber intelligence' },
+          { frontId: 'pacific-war-front', intensity: 1, momentum: 1, modifier: 'Taiwan intelligence link' },
+        ],
         cooldown: 5,
       },
       {
@@ -204,6 +243,10 @@ export const ACTORS: ActorDef[] = [
           { actorId: 'taiwan-allied', relationship: 3 },
           { actorId: 'china-frag', pressure: 3 },
         ],
+        warFrontEffects: [
+          { frontId: 'pacific-war-front', intensity: 2, momentum: 2, modifier: 'Semiconductor linkage' },
+          { frontId: 'financial-war-front', intensity: -1, momentum: -1, modifier: 'Wafer allocation' },
+        ],
         cooldown: 8,
       },
       {
@@ -215,6 +258,7 @@ export const ACTORS: ActorDef[] = [
         requiresFlags: ['supported-taiwan'],
         metricEffects: { publicReality: -2 },
         actorEffects: [{ actorId: 'china-frag', pressure: 5, aggression: 3 }],
+        warFrontEffects: [{ frontId: 'pacific-war-front', intensity: 4, momentum: 4, modifier: 'Taiwan public signal' }],
         cooldown: 10,
       },
     ],
@@ -246,6 +290,7 @@ export const ACTORS: ActorDef[] = [
         forbidsFlags: ['condemned-russia'],
         metricEffects: { mentalLoad: 2 },
         flagsAdded: ['russia-tools-offered'],
+        warFrontEffects: [{ frontId: 'cyber-war-front', intensity: 2, momentum: 3, modifier: 'Russian grey-market tools' }],
         cooldown: 8,
       },
       {
@@ -259,6 +304,10 @@ export const ACTORS: ActorDef[] = [
           { nodeId: 'kuala-lumpur', riskLevel: 2 },
         ],
         metricEffects: { publicReality: -3, financialContinuity: -1 },
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 3, momentum: 3, modifier: 'Russian disinformation' },
+          { frontId: 'european-pressure-front', intensity: 2, momentum: 2, modifier: 'Russia grey-zone export' },
+        ],
         cooldown: 4,
       },
       {
@@ -269,6 +318,10 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         forbidsFlags: ['condemned-russia'],
         metricEffects: { energyAssurance: 2, alignmentPressure: 2 },
+        warFrontEffects: [
+          { frontId: 'european-pressure-front', intensity: 1, momentum: 2, modifier: 'Russian energy offer' },
+          { frontId: 'financial-war-front', intensity: 1, momentum: 1, modifier: 'Flexible settlement risk' },
+        ],
         cooldown: 8,
       },
       {
@@ -281,6 +334,10 @@ export const ACTORS: ActorDef[] = [
         pressureCampaigns: [{ templateId: 'russia-grey-zone-cyber' }],
         phases: [2, 3, 4, 5],
         metricEffects: { cyberResilience: -3, financialContinuity: -1 },
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 4, momentum: 5, modifier: 'Cyber mercenary activity' },
+          { frontId: 'european-pressure-front', intensity: 3, momentum: 4, modifier: 'Russian cyber spillover' },
+        ],
         cooldown: 5,
       },
       {
@@ -295,6 +352,10 @@ export const ACTORS: ActorDef[] = [
         requiresFlags: ['condemned-russia'],
         metricEffects: { cyberResilience: -5, publicReality: -4, energyAssurance: -3 },
         actorEffects: [{ actorId: 'russia-network', pressure: 6, aggression: 5 }],
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 5, momentum: 6, modifier: 'Russian retaliation package' },
+          { frontId: 'european-pressure-front', intensity: 4, momentum: 5, modifier: 'Europe-Russia retaliation' },
+        ],
         cooldown: 6,
       },
     ],
@@ -326,6 +387,10 @@ export const ACTORS: ActorDef[] = [
         pressureCampaigns: [{ templateId: 'europe-sanctions-track' }],
         metricEffects: { alignmentPressure: 4 },
         actorEffects: [{ actorId: 'europe-compact', pressure: 5 }],
+        warFrontEffects: [
+          { frontId: 'european-pressure-front', intensity: 4, momentum: 4, modifier: 'ASEAN sanctions request' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'Sanctions market fear' },
+        ],
         cooldown: 5,
       },
       {
@@ -336,6 +401,10 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         metricEffects: { cyberResilience: 3 },
         actorEffects: [{ actorId: 'europe-compact', relationship: 3 }],
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: -2, momentum: -2, modifier: 'European cyber intelligence' },
+          { frontId: 'european-pressure-front', intensity: 1, momentum: 1, modifier: 'Europe intelligence link' },
+        ],
         cooldown: 6,
       },
       {
@@ -349,6 +418,10 @@ export const ACTORS: ActorDef[] = [
         pressureCampaigns: [{ templateId: 'europe-sanctions-track' }],
         metricEffects: { financialContinuity: -3, alignmentPressure: 3 },
         actorEffects: [{ actorId: 'europe-compact', pressure: 5 }],
+        warFrontEffects: [
+          { frontId: 'european-pressure-front', intensity: 3, momentum: 4, modifier: 'European market restrictions' },
+          { frontId: 'financial-war-front', intensity: 3, momentum: 3, modifier: 'Market access threat' },
+        ],
         cooldown: 8,
       },
       {
@@ -361,6 +434,7 @@ export const ACTORS: ActorDef[] = [
         forbidsFlags: ['condemned-russia'],
         metricEffects: { alignmentPressure: 3 },
         actorEffects: [{ actorId: 'europe-compact', pressure: 4 }],
+        warFrontEffects: [{ frontId: 'european-pressure-front', intensity: 3, momentum: 3, modifier: 'Condemnation request' }],
         cooldown: 6,
       },
       {
@@ -372,6 +446,10 @@ export const ACTORS: ActorDef[] = [
         nodeEffects: [{ nodeId: 'european-front', riskLevel: 5, stability: -3 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -2, mentalLoad: 3 },
+        warFrontEffects: [
+          { frontId: 'european-pressure-front', intensity: 4, momentum: 4, modifier: 'European instability warning' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'European supply-chain fear' },
+        ],
         cooldown: 8,
       },
     ],
@@ -400,6 +478,10 @@ export const ACTORS: ActorDef[] = [
         metricEffects: { financialContinuity: 3 },
         actorEffects: [{ actorId: 'singapore-authority', relationship: 3 }],
         flagsAdded: ['sg-banking-offered'],
+        warFrontEffects: [
+          { frontId: 'financial-war-front', intensity: -3, momentum: -4, modifier: 'MAS-BNM fallback' },
+          { frontId: 'cyber-war-front', intensity: -1, momentum: -1, modifier: 'Cross-border cyber watch' },
+        ],
         cooldown: 6,
       },
       {
@@ -416,6 +498,10 @@ export const ACTORS: ActorDef[] = [
         ],
         metricEffects: { financialContinuity: -1, publicReality: -1 },
         actorEffects: [{ actorId: 'singapore-authority', pressure: 3 }],
+        warFrontEffects: [
+          { frontId: 'maritime-war-front', intensity: 1, momentum: 2, modifier: 'Singapore border tightening' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'Continuity hedge' },
+        ],
         cooldown: 5,
       },
       {
@@ -430,6 +516,7 @@ export const ACTORS: ActorDef[] = [
         ],
         pressureCampaigns: [{ templateId: 'singapore-continuity-hedge' }],
         metricEffects: { financialContinuity: -3 },
+        warFrontEffects: [{ frontId: 'financial-war-front', intensity: 4, momentum: 4, modifier: 'Singapore capital inflow' }],
         cooldown: 5,
       },
       {
@@ -440,6 +527,10 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         metricEffects: { cyberResilience: 2 },
         actorEffects: [{ actorId: 'singapore-authority', relationship: 2 }],
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: -2, momentum: -3, modifier: 'Singapore joint cyber floor' },
+          { frontId: 'financial-war-front', intensity: -1, momentum: -2, modifier: 'Financial cyber cooperation' },
+        ],
         cooldown: 6,
       },
       {
@@ -450,6 +541,7 @@ export const ACTORS: ActorDef[] = [
         weight: 3,
         metricEffects: { institutionalTrust: -3, mentalLoad: 3 },
         actorEffects: [{ actorId: 'singapore-authority', pressure: 6 }],
+        warFrontEffects: [{ frontId: 'financial-war-front', intensity: 2, momentum: 3, modifier: 'Singapore contingency pressure' }],
         cooldown: 6,
       },
     ],
@@ -476,6 +568,10 @@ export const ACTORS: ActorDef[] = [
         nodeEffects: [{ nodeId: 'jakarta', stability: 2 }],
         metricEffects: { aseanCohesion: 3, maritimeControl: 2 },
         actorEffects: [{ actorId: 'indonesia-maritime', relationship: 2 }],
+        warFrontEffects: [
+          { frontId: 'maritime-war-front', intensity: -3, momentum: -4, modifier: 'Indonesia maritime summit' },
+          { frontId: 'pacific-war-front', intensity: -1, momentum: -2, modifier: 'ASEAN maritime forum' },
+        ],
         cooldown: 6,
       },
       {
@@ -486,6 +582,7 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         nodeEffects: [{ nodeId: 'batam-corridor', stability: 3, riskLevel: -3 }],
         metricEffects: { maritimeControl: -2, aseanCohesion: 2 },
+        warFrontEffects: [{ frontId: 'maritime-war-front', intensity: -2, momentum: -3, modifier: 'Indonesian patrol surge' }],
         cooldown: 5,
       },
       {
@@ -497,6 +594,10 @@ export const ACTORS: ActorDef[] = [
         phases: [3, 4, 5],
         metricEffects: { aseanCohesion: 4 },
         flagsAdded: ['id-shield-proposed'],
+        warFrontEffects: [
+          { frontId: 'maritime-war-front', intensity: -2, momentum: -3, modifier: 'ASEAN Shield proposal' },
+          { frontId: 'pacific-war-front', intensity: -1, momentum: -2, modifier: 'ASEAN defense forum' },
+        ],
         cooldown: 10,
       },
       {
@@ -507,6 +608,10 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         phases: [3, 4, 5],
         metricEffects: { energyAssurance: -2, financialContinuity: -1 },
+        warFrontEffects: [
+          { frontId: 'maritime-war-front', intensity: 1, momentum: 2, modifier: 'Regional export restriction' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'Commodity price jump' },
+        ],
         cooldown: 8,
       },
       {
@@ -545,6 +650,7 @@ export const ACTORS: ActorDef[] = [
         pressureCampaigns: [{ templateId: 'markets-capital-flight' }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2.5 }],
         metricEffects: { financialContinuity: -4 },
+        warFrontEffects: [{ frontId: 'financial-war-front', intensity: 5, momentum: 6, modifier: 'Capital flight' }],
         cooldown: 4,
       },
       {
@@ -557,6 +663,10 @@ export const ACTORS: ActorDef[] = [
         dynamics: [{ metricBelow: { maritimeControl: 45 }, multiplier: 2.5 }],
         phases: [2, 3, 4, 5],
         metricEffects: { maritimeControl: -2, energyAssurance: -1 },
+        warFrontEffects: [
+          { frontId: 'maritime-war-front', intensity: 4, momentum: 5, modifier: 'War-risk insurance spike' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'Shipping insurance repricing' },
+        ],
         cooldown: 6,
       },
       {
@@ -568,6 +678,7 @@ export const ACTORS: ActorDef[] = [
         nodeEffects: [{ nodeId: 'bursa-node', riskLevel: 6, stability: -3 }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 2 }],
         metricEffects: { financialContinuity: -3, institutionalTrust: -1 },
+        warFrontEffects: [{ frontId: 'financial-war-front', intensity: 4, momentum: 4, modifier: 'Downgrade warning' }],
         cooldown: 8,
       },
       {
@@ -580,6 +691,10 @@ export const ACTORS: ActorDef[] = [
         dynamics: [{ metricBelow: { financialContinuity: 40 }, multiplier: 2 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -5, mentalLoad: 3 },
+        warFrontEffects: [
+          { frontId: 'financial-war-front', intensity: 5, momentum: 6, modifier: 'Liquidity freeze' },
+          { frontId: 'cyber-war-front', intensity: 1, momentum: 1, modifier: 'Settlement timing anomaly' },
+        ],
         cooldown: 8,
       },
       {
@@ -593,6 +708,7 @@ export const ACTORS: ActorDef[] = [
           { metricBelow: { financialContinuity: 45 }, multiplier: 0.3 },
         ],
         metricEffects: { financialContinuity: 5, institutionalTrust: 2 },
+        warFrontEffects: [{ frontId: 'financial-war-front', intensity: -4, momentum: -5, modifier: 'Market confidence rally' }],
         cooldown: 6,
       },
     ],
@@ -621,6 +737,10 @@ export const ACTORS: ActorDef[] = [
         pressureCampaigns: [{ templateId: 'threat-cloud-banking-wave' }],
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 1.5 }],
         metricEffects: { cyberResilience: -4, financialContinuity: -2 },
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 5, momentum: 6, modifier: 'AI ransomware wave' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'Ransomware settlement stress' },
+        ],
         cooldown: 4,
       },
       {
@@ -631,6 +751,10 @@ export const ACTORS: ActorDef[] = [
         weight: 2,
         incidents: [{ incidentId: 'deepfake-panic-cluster', nodeId: 'kuala-lumpur' }],
         metricEffects: { publicReality: -5, financialContinuity: -2 },
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 3, momentum: 4, modifier: 'Deepfake panic' },
+          { frontId: 'financial-war-front', intensity: 1, momentum: 1, modifier: 'Bank-run rumour' },
+        ],
         cooldown: 6,
       },
       {
@@ -643,6 +767,10 @@ export const ACTORS: ActorDef[] = [
         dynamics: [{ metricBelow: { maritimeControl: 45 }, multiplier: 1.8 }],
         phases: [2, 3, 4, 5],
         metricEffects: { maritimeControl: -3, financialContinuity: -1 },
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 3, momentum: 4, modifier: 'Port OT disruption' },
+          { frontId: 'maritime-war-front', intensity: 3, momentum: 3, modifier: 'Port queue shock' },
+        ],
         cooldown: 6,
       },
       {
@@ -658,6 +786,10 @@ export const ACTORS: ActorDef[] = [
         dynamics: [{ metricBelow: { financialContinuity: 45 }, multiplier: 1.5 }],
         phases: [3, 4, 5],
         metricEffects: { financialContinuity: -3, publicReality: -2 },
+        warFrontEffects: [
+          { frontId: 'financial-war-front', intensity: 3, momentum: 4, modifier: 'CBDC wallet panic' },
+          { frontId: 'cyber-war-front', intensity: 2, momentum: 3, modifier: 'Digital identity fraud' },
+        ],
         cooldown: 6,
       },
       {
@@ -667,6 +799,10 @@ export const ACTORS: ActorDef[] = [
           'Banks report a surge of AI-generated synthetic identities passing onboarding checks. KYC teams request therapy budgets.',
         weight: 2,
         metricEffects: { financialContinuity: -2, institutionalTrust: -1 },
+        warFrontEffects: [
+          { frontId: 'cyber-war-front', intensity: 2, momentum: 2, modifier: 'Synthetic identity fraud' },
+          { frontId: 'financial-war-front', intensity: 2, momentum: 2, modifier: 'Synthetic fraud losses' },
+        ],
         cooldown: 5,
       },
     ],

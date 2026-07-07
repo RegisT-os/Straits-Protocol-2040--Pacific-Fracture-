@@ -5,16 +5,19 @@ import type {
   MapNodeId,
   MapNodeState,
   PressureCampaignStatus,
+  WarFrontState,
 } from '../types/gameTypes';
 import { getAction } from '../data/actions';
 import { getIncident } from '../data/incidents';
 import { MAP_NODES, NODE_MAP } from '../data/mapNodes';
 import { getPressureCampaign } from '../data/pressureCampaigns';
+import { WAR_FRONTS } from '../data/warFronts';
 import { getActionSlots } from './actionEngine';
 import { createInitialMap } from './mapEngine';
+import { createInitialWarFronts, deriveWarFrontStatus } from './warFrontEngine';
 
 const SAVE_KEY = 'straits-protocol-2040-save';
-const SAVE_VERSION = 4;
+const SAVE_VERSION = 5;
 
 interface SaveEnvelope {
   version: number;
@@ -204,6 +207,53 @@ function normalizePressureCampaigns(state: GameState): void {
     .filter((campaign): campaign is ActivePressureCampaign => campaign !== null);
 }
 
+function clampFrontValue(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(100, Math.round(value * 100) / 100));
+}
+
+function clampFrontMomentum(value: unknown, fallback: number): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
+  return Math.max(-100, Math.min(100, Math.round(value * 100) / 100));
+}
+
+function clampFrontEscalation(value: unknown, fallback: number): 1 | 2 | 3 | 4 | 5 {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback as 1 | 2 | 3 | 4 | 5;
+  return Math.max(1, Math.min(5, Math.round(value))) as 1 | 2 | 3 | 4 | 5;
+}
+
+function normalizeWarFront(raw: unknown, fallback: WarFrontState): WarFrontState {
+  const saved = isObject(raw) ? raw : {};
+  const intensity = clampFrontValue(saved.intensity, fallback.intensity);
+  const modifiers =
+    Array.isArray(saved.activeModifiers) &&
+    saved.activeModifiers.every((modifier) => typeof modifier === 'string')
+      ? saved.activeModifiers.slice(0, 5)
+      : fallback.activeModifiers;
+  return {
+    ...fallback,
+    intensity,
+    momentum: clampFrontMomentum(saved.momentum, fallback.momentum),
+    escalationLevel: clampFrontEscalation(saved.escalationLevel, fallback.escalationLevel),
+    dominantSide: typeof saved.dominantSide === 'string' ? saved.dominantSide : fallback.dominantSide,
+    status: deriveWarFrontStatus(intensity),
+    activeModifiers: modifiers,
+    lastShiftWeek:
+      typeof saved.lastShiftWeek === 'number' && Number.isFinite(saved.lastShiftWeek)
+        ? Math.max(1, Math.round(saved.lastShiftWeek))
+        : fallback.lastShiftWeek,
+  };
+}
+
+function normalizeWarFronts(state: GameState): void {
+  const fallback = createInitialWarFronts(state.week);
+  const rawFronts: Record<string, unknown> = isObject(state.warFronts) ? state.warFronts : {};
+  for (const def of WAR_FRONTS) {
+    fallback[def.id] = normalizeWarFront(rawFronts[def.id], fallback[def.id]);
+  }
+  state.warFronts = fallback;
+}
+
 export function saveGame(state: GameState): boolean {
   try {
     const envelope: SaveEnvelope = {
@@ -235,17 +285,22 @@ export function migrateState(state: GameState, version: number): GameState {
   if (version < 4) {
     state.activePressureCampaigns ??= [];
   }
+  if (version < 5) {
+    state.warFronts ??= createInitialWarFronts(state.week);
+  }
   state.pendingActions ??= [];
   state.pendingTargets ??= {};
   state.scheduledEffects ??= [];
   state.lastEventWeek ??= {};
   state.activePressureCampaigns ??= [];
+  state.warFronts ??= createInitialWarFronts(state.week);
   state.rngCursor ??= 0;
   state.turn ??= state.week;
   state.map ??= createInitialMap();
   normalizeMapState(state);
   normalizeSelectionState(state);
   normalizePressureCampaigns(state);
+  normalizeWarFronts(state);
   return state;
 }
 

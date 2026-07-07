@@ -9,6 +9,7 @@ import { MetricsBar } from './MetricsBar';
 import { StrategicMap } from './StrategicMap';
 import { CommandPanel } from './CommandPanel';
 import { ActorPanel } from './ActorPanel';
+import { WarFrontsPanel } from './WarFrontsPanel';
 import { ActiveCampaignsPanel } from './ActiveCampaignsPanel';
 import { TimelineFeed } from './TimelineFeed';
 import { EventModal } from './EventModal';
@@ -142,8 +143,9 @@ export function GameShell({
           <StrategicMap state={state} onSelectNode={onSelectNode} />
         </div>
         <div className="grid min-h-0 flex-[2] grid-cols-1 gap-3 lg:grid-cols-2">
-          <div className="grid min-h-0 grid-rows-2 gap-3">
+          <div className="grid min-h-0 grid-rows-3 gap-3">
             <ActorPanel state={state} />
+            <WarFrontsPanel state={state} />
             <ActiveCampaignsPanel state={state} />
           </div>
           <TimelineFeed timeline={state.timeline} />

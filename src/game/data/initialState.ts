@@ -14,6 +14,7 @@ import { getDifficulty } from './difficulty';
 import { getRole } from './roles';
 import { clampMetrics } from '../engine/actionEngine';
 import { createInitialMap } from '../engine/mapEngine';
+import { createInitialWarFronts } from '../engine/warFrontEngine';
 
 export const MAX_WEEKS = 104;
 
@@ -167,6 +168,7 @@ export function createInitialState(
     selectedNode: null,
     scheduledEffects: [],
     activePressureCampaigns: [],
+    warFronts: createInitialWarFronts(1),
     flags: [],
     ending: null,
   };
