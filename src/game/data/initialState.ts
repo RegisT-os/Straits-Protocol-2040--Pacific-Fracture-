@@ -20,6 +20,7 @@ import { DEFAULT_PLAYABLE_FACTION_ID, getPlayableFaction } from './playableFacti
 import { getRole } from './roles';
 import { clamp, clampMetrics } from '../engine/actionEngine';
 import { createInitialMap } from '../engine/mapEngine';
+import { createInitialMilitaryAssets } from '../engine/militaryEngine';
 import { createInitialWarFronts, deriveWarFrontStatus } from '../engine/warFrontEngine';
 
 export const MAX_WEEKS = 104;
@@ -209,6 +210,7 @@ export function createInitialState(
     scheduledEffects: [],
     activePressureCampaigns: [],
     warFronts,
+    militaryAssets: createInitialMilitaryAssets(playableFactionId),
     flags: [],
     ending: null,
   };

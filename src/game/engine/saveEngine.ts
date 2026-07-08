@@ -16,10 +16,11 @@ import { getPressureCampaign } from '../data/pressureCampaigns';
 import { WAR_FRONTS } from '../data/warFronts';
 import { getActionAvailability, getActionSlots } from './actionEngine';
 import { createInitialMap } from './mapEngine';
+import { createInitialMilitaryAssets, repairMilitaryAssets } from './militaryEngine';
 import { createInitialWarFronts, deriveWarFrontStatus } from './warFrontEngine';
 
 const SAVE_KEY = 'straits-protocol-2040-save';
-const SAVE_VERSION = 6;
+const SAVE_VERSION = 7;
 
 interface SaveEnvelope {
   version: number;
@@ -302,6 +303,14 @@ export function migrateState(state: GameState, version: number): GameState {
   if (version < 6) {
     state.playableFactionId ??= DEFAULT_PLAYABLE_FACTION_ID;
   }
+  if (version < 7) {
+    // v6 saves predate the military layer — raise the faction's forces fresh.
+    state.militaryAssets ??= createInitialMilitaryAssets(
+      isPlayableFactionId(state.playableFactionId)
+        ? state.playableFactionId
+        : DEFAULT_PLAYABLE_FACTION_ID,
+    );
+  }
   state.playableFactionId = isPlayableFactionId(state.playableFactionId)
     ? state.playableFactionId
     : DEFAULT_PLAYABLE_FACTION_ID;
@@ -318,6 +327,7 @@ export function migrateState(state: GameState, version: number): GameState {
   normalizeSelectionState(state);
   normalizePressureCampaigns(state);
   normalizeWarFronts(state);
+  repairMilitaryAssets(state);
   return state;
 }
 

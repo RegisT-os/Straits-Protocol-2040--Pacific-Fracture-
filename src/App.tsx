@@ -9,6 +9,7 @@ import {
   setActionTarget,
   togglePendingAction,
 } from './game/engine/turnEngine';
+import { assignMilitaryOperation } from './game/engine/militaryEngine';
 import { clearSave, hasSave, loadGame, saveGame, savedAt } from './game/engine/saveEngine';
 import { CampaignSetup } from './ui/CampaignSetup';
 import { GameShell } from './ui/GameShell';
@@ -68,6 +69,15 @@ export default function App() {
       if (!prev) return prev;
       const next = selectMapNode(prev, nodeId);
       saveGame(next);
+      return next;
+    });
+  }, []);
+
+  const handleAssignOperation = useCallback((assetId: string, operationId: string) => {
+    setState((prev) => {
+      if (!prev) return prev;
+      const next = assignMilitaryOperation(prev, assetId, operationId);
+      if (next !== prev) saveGame(next); // assignments survive a reload
       return next;
     });
   }, []);
@@ -135,6 +145,7 @@ export default function App() {
       onToggleAction={handleToggleAction}
       onSetTarget={handleSetTarget}
       onSelectNode={handleSelectNode}
+      onAssignOperation={handleAssignOperation}
       onAdvance={handleAdvance}
       onResolveEvent={handleResolveEvent}
       onSave={handleSave}

@@ -29,6 +29,7 @@ import {
   tickPressureCampaigns,
 } from './pressureCampaignEngine';
 import { applyWarFrontEffects, tickWarFronts } from './warFrontEngine';
+import { recoverMilitaryAssets, tickMilitaryOperations } from './militaryEngine';
 
 function cloneState(state: GameState): GameState {
   return structuredClone(state);
@@ -128,6 +129,8 @@ export function advanceTurn(
   tickMap(next);
   tickPressureCampaigns(next);
   tickWarFronts(next, rng);
+  tickMilitaryOperations(next, rng);
+  recoverMilitaryAssets(next);
   applyMapPressureOnMetrics(next);
 
   // 3. Cooldown ticks.

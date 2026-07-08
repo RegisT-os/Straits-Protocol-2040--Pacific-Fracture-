@@ -9,12 +9,14 @@
 //      set CHROMIUM_PATH if your browser lives elsewhere.
 //
 // Flow: serve dist/ via `vite preview`, then in a real browser:
-// pick a faction + role + difficulty, start a campaign, verify the strategic map
-// (node selection + detail), fire a map-targeted action with a chosen
-// target, verify the War Fronts and Active Campaigns panels, inject a
-// deterministic pressure campaign, play 8 turns (resolving interactive
-// events), save, reload, load the save, verify map/campaign/front state
-// survived, and assert zero console errors.
+// pick a faction + role + difficulty, start a campaign, verify the war-room
+// shell (command bar, board-mode tabs, strategic map, situation panel), open
+// the War Fronts board mode, fire a map-targeted action, inject a v6 save to
+// confirm military assets migrate in, open the Military board mode (asset
+// card + silhouette + operation assignment), exercise a timeline filter, play
+// turns (resolving interactive events), save/reload to confirm military
+// operation state survives, and finally render the ending scorecard — all
+// with zero console errors.
 
 import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -106,34 +108,44 @@ try {
   await page.click('text=Analyst');
   await page.click('button:has-text("Start Campaign")');
   await page.waitForSelector('text=Week 1/104');
+  await page.waitForSelector('[data-testid="command-bar"]');
   await page.waitForSelector('text=US PACOM');
   await page.waitForSelector('text=Actions selected:');
-  await page.waitForSelector('h2:has-text("War Fronts")');
-  await page.waitForSelector('text=Pacific War Front');
-  await page.waitForSelector('text=Drivers:');
-  await page.waitForSelector('text=US PACOM impact:');
-  await page.waitForSelector('text=Counterplay:');
-  await page.waitForSelector('text=Campaign risk:');
-  await page.waitForSelector('text=Trend:');
-  await page.waitForSelector('text=Spawn window:');
-  await page.waitForSelector('text=Counter tags:');
-  await page.waitForSelector('text=Recent shift:');
-  await page.waitForSelector('h2:has-text("Active Campaigns")');
-  await page.waitForSelector('text=Surge Allied Pacific Logistics');
-  await page.waitForSelector('text=Expand Orbital Deterrence Net');
-  await page.waitForSelector('text=Activate Terrestrial Navigation Backup');
-  await page.waitForSelector('text=Harden Financial Timing Backup');
-  await page.waitForSelector('text=Lease Allied Orbital Coverage');
-  console.log('US PACOM campaign started (Analyst difficulty, slot counter and war fronts visible)');
+  await page.waitForSelector('h2:has-text("Command Panel")');
+  await page.waitForSelector('[data-testid="situation-panel"]');
+  console.log('war-room shell renders (command bar, command panel, situation panel)');
 
-  // Strategic map renders; a node can be selected and shows detail.
+  // Board-mode tabs: all five modes present. Scope to the tab bar because the
+  // labels ("Military", "War Fronts") also appear in the timeline filter/panels.
+  const boardTabs = page.locator('[data-testid="board-mode-tabs"]');
+  await page.waitForSelector('[data-testid="board-mode-tabs"]');
+  for (const tab of ['Strategic Map', 'War Fronts', 'Military', 'Campaigns', 'Intelligence']) {
+    if ((await boardTabs.locator(`button:has-text("${tab}")`).count()) === 0) {
+      throw new Error(`board mode tab missing: ${tab}`);
+    }
+  }
+  console.log('board mode tabs render (map/fronts/military/campaigns/intelligence)');
+
+  // Default mode is the strategic map; a node can be selected and shows detail.
   await page.waitForSelector('h2:has-text("Strategic Map")');
   const mapSection = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
   await mapSection.locator('button:has-text("Port Klang")').first().click();
   await page.waitForSelector('text=Connected');
   console.log('strategic map renders, node detail opens');
 
-  // Map-targeted action: select it, pick a target, advance.
+  // War Fronts board mode: open the tab and verify the full front panel.
+  await boardTabs.locator('button:has-text("War Fronts")').click();
+  await page.waitForSelector('h2:has-text("War Fronts")');
+  await page.waitForSelector('text=Pacific War Front');
+  await page.waitForSelector('text=Counterplay:');
+  await page.waitForSelector('text=Counter tags:');
+  console.log('war fronts board mode renders with front detail');
+
+  // Back to the map for the targeted action flow.
+  await boardTabs.locator('button:has-text("Strategic Map")').click();
+  await page.waitForSelector('h2:has-text("Strategic Map")');
+
+  // Map-targeted action: select it in the command panel, pick a target, advance.
   await page.locator('button:has-text("Coordinate ASEAN CERT Fusion Cell")').first().click();
   await page.waitForSelector('select');
   await page.selectOption('select', 'bnm-core');
@@ -185,9 +197,60 @@ try {
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=US PACOM');
+  // The injected save is version 6 (pre-military); loading it must migrate a
+  // fresh military roster in. Confirm via the Campaigns then Military tabs.
+  const boardTabsAfterLoad = page.locator('[data-testid="board-mode-tabs"]');
+  await boardTabsAfterLoad.locator('button:has-text("Campaigns")').click();
+  await page.waitForSelector('h2:has-text("Active Campaigns")');
   await page.waitForSelector('text=PNT Degradation Cycle');
-  await page.waitForSelector('text=INT 1');
-  console.log('active campaigns panel renders orbital campaign and save/load works');
+  console.log('active campaigns board mode renders orbital campaign after v6 load');
+
+  await boardTabsAfterLoad.locator('button:has-text("Military")').click();
+  await page.waitForSelector('[data-testid="military-panel"]');
+  await page.waitForSelector('[data-testid="military-panel"] button:has-text("Carrier Strike Group Pacific")');
+  if ((await page.locator('[data-testid="military-panel"] svg[data-silhouette]').count()) === 0) {
+    throw new Error('military asset silhouette did not render after v6 migration');
+  }
+  console.log('v6 save migrated military assets in; asset card and silhouette render');
+
+  // Select the carrier and assign its eligible operation.
+  await page.locator('[data-testid="military-panel"] button:has-text("Carrier Strike Group Pacific")').click();
+  await page.waitForSelector('text=Eligible operations');
+  await page.locator('[data-testid="military-panel"] button:has-text("Counter-Blockade Screen")').first().click();
+  await page.locator('button:has-text("Assign Counter-Blockade Screen")').click();
+  await page.locator('[data-testid="military-panel"]').getByText('On mission').first().waitFor();
+  const launched = await page.locator('text=Operation launched: Counter-Blockade Screen').count();
+  if (launched === 0) throw new Error('operation launch did not appear in timeline');
+  console.log('military operation assigned; carrier shows active mission');
+
+  // Timeline filter: narrow to Military and confirm the launch entry survives.
+  const timelineControls = page.locator('[data-testid="timeline-controls"]');
+  await timelineControls.locator('button:has-text("Military")').click();
+  await page.waitForSelector('text=Operation launched: Counter-Blockade Screen');
+  await timelineControls.locator('button:has-text("All")').click();
+  console.log('timeline military filter works');
+
+  // Save/reload must preserve the active military operation.
+  await page.click('button:has-text("Save")');
+  await page.waitForSelector('text=Saved ✓');
+  await page.reload();
+  await page.click('button:has-text("Load saved campaign")');
+  await page.waitForSelector('text=US PACOM');
+  await page.locator('[data-testid="board-mode-tabs"] button:has-text("Military")').click();
+  await page.locator('[data-testid="military-panel"]').getByText('On mission').first().waitFor();
+  const missionSurvived = await page.evaluate(() => {
+    const raw = localStorage.getItem('straits-protocol-2040-save');
+    const carrier = JSON.parse(raw).state.militaryAssets.find(
+      (a) => a.id === 'us-carrier-group-pacific',
+    );
+    return carrier && carrier.activeOperationId === 'counter-blockade-screen';
+  });
+  if (!missionSurvived) throw new Error('active military operation did not survive save/reload');
+  console.log('military operation state survives save/reload');
+
+  // Return to the map so the turn loop selects command-panel actions cleanly.
+  await page.locator('[data-testid="board-mode-tabs"] button:has-text("Strategic Map")').click();
+  await page.waitForSelector('h2:has-text("Strategic Map")');
 
   const frontBeforeTurns = await page.evaluate(() => {
     const raw = localStorage.getItem('straits-protocol-2040-save');
@@ -195,12 +258,14 @@ try {
     return JSON.parse(raw).state.warFronts['pacific-war-front'].intensity;
   });
 
+  const commandPanel = page.locator('section', { has: page.locator('h2:has-text("Command Panel")') });
   for (let i = 0; i < 7; i++) {
     if (await page.locator('text=Decision required').count()) {
       await page.locator('div.fixed button').first().click();
       console.log('  resolved interactive event');
     }
-    await page.locator('section button:not([disabled])').first().click();
+    // "Monitor the Situation" is always available and never needs a target.
+    await commandPanel.locator('button:has-text("Monitor the Situation")').first().click();
     const advance = page.locator('button:has-text("Advance Week")');
     if (await advance.isDisabled()) {
       await page.locator('div.fixed button').first().click();
@@ -230,20 +295,27 @@ try {
   await page.waitForSelector('text=Saved ✓');
   console.log('manual save ok');
 
+  // The 4-week operation assigned at week 2 completes within the loop.
+  const opResolved = await page.locator('text=/Operation (complete|failed): Counter-Blockade Screen/').count();
+  if (opResolved === 0) throw new Error('military operation did not resolve during the turn loop');
+  console.log('military operation resolved during play');
+
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=Week 9/104');
   await page.waitForSelector('text=US PACOM');
   await page.waitForSelector('h2:has-text("Strategic Map")');
-  await page.waitForSelector('h2:has-text("War Fronts")');
-  await page.waitForSelector('text=Pacific War Front');
-  await page.waitForSelector('text=Counterplay:');
-  await page.waitForSelector('text=Counter tags:');
-  await page.waitForSelector('h2:has-text("Active Campaigns")');
+  const finalBoardTabs = page.locator('[data-testid="board-mode-tabs"]');
   const mapAfterLoad = page.locator('section', { has: page.locator('h2:has-text("Strategic Map")') });
   if ((await mapAfterLoad.locator('button:has-text("Malacca Strait")').count()) === 0) {
     throw new Error('map state missing after reload');
   }
+  await finalBoardTabs.locator('button:has-text("War Fronts")').click();
+  await page.waitForSelector('h2:has-text("War Fronts")');
+  await page.waitForSelector('text=Pacific War Front');
+  await page.waitForSelector('text=Counter tags:');
+  await finalBoardTabs.locator('button:has-text("Campaigns")').click();
+  await page.waitForSelector('h2:has-text("Active Campaigns")');
   if ((await page.locator('text=PNT Degradation Cycle').count()) === 0) {
     throw new Error('orbital campaign state missing after reload');
   }

@@ -51,6 +51,13 @@ import {
   togglePendingAction,
 } from '../src/game/engine/turnEngine';
 import { getPendingEvent } from '../src/game/engine/eventEngine';
+import {
+  assignMilitaryOperation,
+  getEligibleOperations,
+  operationSuccessChance,
+} from '../src/game/engine/militaryEngine';
+import { MILITARY_ASSETS } from '../src/game/data/militaryAssets';
+import { MILITARY_OPERATIONS } from '../src/game/data/militaryOperations';
 import { migrateState } from '../src/game/engine/saveEngine';
 import type {
   ActionDef,
@@ -106,6 +113,14 @@ function assertClamped(state: GameState, label: string): void {
     if (!node) continue;
     for (const key of ['stability', 'riskLevel', 'cyberExposure'] as const) {
       check(node[key] >= 0 && node[key] <= 100, `${label}: node ${def.id}.${key} out of range (${node[key]})`);
+    }
+  }
+  for (const asset of state.militaryAssets) {
+    for (const key of ['readiness', 'strength', 'logistics', 'exposure'] as const) {
+      check(
+        asset[key] >= 0 && asset[key] <= 100,
+        `${label}: asset ${asset.id}.${key} out of range (${asset[key]})`,
+      );
     }
   }
   for (const campaign of state.activePressureCampaigns) {
@@ -467,6 +482,11 @@ function runGreedy(
       })
       .sort((x, y) => y.score - x.score);
     const chosen = scored.slice(0, slots).map((s) => s.id);
+    // Greedy commander: task every idle force with its first eligible operation.
+    for (const asset of state.militaryAssets) {
+      const ops = getEligibleOperations(asset, state);
+      if (ops.length > 0) state = assignMilitaryOperation(state, asset.id, ops[0].id);
+    }
     state = advanceTurn(state, chosen, targetsFor(chosen));
     const pending = getPendingEvent(state);
     if (pending && pending.choices) {
@@ -981,6 +1001,105 @@ console.log(`Faction determinism (Singapore seed 77, replayed twice): ${factionD
   console.log('\nPlayable factions: initialization, action visibility, migration, clamping, and all role/difficulty runs OK');
 }
 
+// --- 4e: military assets and operations ---------------------------------------
+{
+  // Every faction raises exactly 3 clamped assets with at least one eligible op.
+  for (const faction of FACTIONS) {
+    const state = createInitialState('military-liaison', 21, 'adviser', faction);
+    check(state.militaryAssets.length === 3, `${faction}: expected 3 military assets, got ${state.militaryAssets.length}`);
+    for (const asset of state.militaryAssets) {
+      for (const key of ['readiness', 'strength', 'logistics', 'exposure'] as const) {
+        check(asset[key] >= 0 && asset[key] <= 100, `${faction}/${asset.id}: ${key} unclamped`);
+      }
+      check(
+        getEligibleOperations(asset, state).length > 0,
+        `${faction}/${asset.id}: no eligible operations at start`,
+      );
+      const chance = operationSuccessChance(asset, MILITARY_OPERATIONS[0]);
+      check(chance >= 0.15 && chance <= 0.95, `${faction}/${asset.id}: success chance out of band (${chance})`);
+    }
+  }
+  check(MILITARY_ASSETS.length === FACTIONS.length * 3, 'asset catalogue is not 3 per faction');
+  check(MILITARY_OPERATIONS.length >= 8, 'fewer than 8 operation templates');
+
+  // Assignment pays costs and sets an ETA; completion is deterministic.
+  const runOnce = () => {
+    let state = createInitialState('military-liaison', 33, 'adviser', 'malaysia');
+    const asset = state.militaryAssets[0];
+    const op = getEligibleOperations(asset, state)[0];
+    const before = { readiness: asset.readiness, logistics: asset.logistics };
+    state = assignMilitaryOperation(state, asset.id, op.id);
+    const assigned = state.militaryAssets[0];
+    check(assigned.status === 'on-mission' && assigned.activeOperationId === op.id, 'assignment did not set mission');
+    check(
+      assigned.readiness === before.readiness - op.readinessCost &&
+        assigned.logistics === before.logistics - op.logisticsCost,
+      'assignment did not pay costs',
+    );
+    check(assigned.operationEndsWeek === state.week + op.durationWeeks, 'assignment ETA wrong');
+    // Inject a synthetic campaign the operation can counter.
+    state.activePressureCampaigns.push({
+      ...structuredClone(PRESSURE_CAMPAIGNS[0]),
+      id: 'sim-synthetic-campaign',
+      templateId: PRESSURE_CAMPAIGNS[0].id,
+      startedWeek: state.week,
+      currentWeek: 0,
+      status: 'active',
+      intensity: 3,
+      counterActionTags: [...(op.campaignCounterTags ?? ['maritime'])],
+    });
+    for (let i = 0; i <= op.durationWeeks && state.status === 'active'; i++) {
+      state = advanceTurn(state, ['monitor-situation']);
+      const pending = getPendingEvent(state);
+      if (pending?.choices) state = resolvePendingEvent(state, pending.id, pending.choices[0].id);
+    }
+    return { state, opName: op.name };
+  };
+  const runA = runOnce();
+  const runB = runOnce();
+  const doneA = runA.state.timeline.filter(
+    (t) => t.type === 'military' && (t.title.startsWith('Operation complete') || t.title.startsWith('Operation failed')),
+  );
+  check(doneA.length >= 1, 'operation did not resolve by its ETA');
+  const doneB = runB.state.timeline.filter(
+    (t) => t.type === 'military' && (t.title.startsWith('Operation complete') || t.title.startsWith('Operation failed')),
+  );
+  check(
+    doneA.length === doneB.length && doneA[0]?.title === doneB[0]?.title,
+    'operation outcome not deterministic for same seed',
+  );
+  const releasedAsset = runA.state.militaryAssets[0];
+  check(!releasedAsset.activeOperationId, 'asset not released after operation');
+  const synthetic = runA.state.activePressureCampaigns.find((c) => c.id === 'sim-synthetic-campaign');
+  const countered = runA.state.timeline.some((t) => t.type === 'military' && t.title.startsWith('Campaign countered'));
+  if (doneA[0]?.title.startsWith('Operation complete')) {
+    check(
+      (synthetic !== undefined && synthetic.intensity < 3) || countered,
+      'successful operation did not counter the matching campaign',
+    );
+  }
+  assertClamped(runA.state, 'military scripted run');
+
+  // Save migration: a v6 save (no military layer) raises the faction's forces.
+  const legacy = structuredClone(runA.state) as Partial<GameState>;
+  delete (legacy as Record<string, unknown>).militaryAssets;
+  const migrated = migrateState(legacy as GameState, 6);
+  check(
+    Array.isArray(migrated.militaryAssets) && migrated.militaryAssets.length === 3,
+    'v6 migration did not initialize military assets',
+  );
+  // Repair: corrupt gauges and dangling operation references get fixed.
+  const corrupt = structuredClone(runA.state);
+  corrupt.militaryAssets[0].readiness = 400;
+  corrupt.militaryAssets[0].activeOperationId = 'no-such-op';
+  corrupt.militaryAssets[0].status = 'on-mission';
+  const repaired = migrateState(corrupt, 7);
+  check(repaired.militaryAssets[0].readiness <= 100, 'repair did not clamp gauges');
+  check(!repaired.militaryAssets[0].activeOperationId, 'repair did not drop dangling operation ref');
+
+  console.log(`\nMilitary: 3 assets x ${FACTIONS.length} factions, assignment/costs/ETA, deterministic completion (${runA.opName}), campaign counter, migration + repair OK`);
+}
+
 // --- 5: playability floor per difficulty --------------------------------------
 console.log('\nGreedy-policy campaigns (competent player proxy):');
 const floor: Record<DifficultyId, { full: number; total: number }> = {
@@ -1008,6 +1127,30 @@ for (const difficulty of DIFFICULTIES) {
   console.log(`  ${difficulty}: reached week 104 in ${full}/${total} runs`);
 }
 reportRunDiagnostics('Greedy policy', greedyResults);
+{
+  let completed = 0;
+  let failed = 0;
+  const byOp = new Map<string, number>();
+  for (const { final } of greedyResults) {
+    for (const entry of final.timeline) {
+      if (entry.type !== 'military') continue;
+      if (entry.title.startsWith('Operation complete')) {
+        completed++;
+        const opName = entry.title.replace('Operation complete: ', '');
+        byOp.set(opName, (byOp.get(opName) ?? 0) + 1);
+      } else if (entry.title.startsWith('Operation failed')) {
+        failed++;
+        const opName = entry.title.replace('Operation failed: ', '');
+        byOp.set(opName, (byOp.get(opName) ?? 0) + 1);
+      }
+    }
+  }
+  const mostCommon = [...byOp.entries()].sort((a, b) => b[1] - a[1])[0];
+  console.log(
+    `  military operations across greedy runs: ${completed + failed} resolved (${completed} success / ${failed} failed), most common: ${mostCommon ? `${mostCommon[0]} x${mostCommon[1]}` : 'none'}`,
+  );
+  check(completed + failed > 0, 'greedy runs never resolved a military operation');
+}
 check(
   floor.analyst.full >= 14,
   `Analyst too hard: greedy reached 104 only ${floor.analyst.full}/${floor.analyst.total}`,

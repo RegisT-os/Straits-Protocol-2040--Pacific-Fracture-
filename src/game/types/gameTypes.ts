@@ -428,6 +428,92 @@ export interface ActivePressureCampaign {
 }
 
 // ---------------------------------------------------------------------------
+// Military assets and operations
+// ---------------------------------------------------------------------------
+
+export type MilitaryAssetType =
+  | 'carrier-group'
+  | 'destroyer-screen'
+  | 'submarine-group'
+  | 'patrol-fleet'
+  | 'drone-squadron'
+  | 'cyber-ew-cell'
+  | 'orbital-recon'
+  | 'port-defense'
+  | 'convoy-escort'
+  | 'amphibious-logistics'
+  | 'air-defense-cell'
+  | 'logistics-fleet';
+
+export type MilitaryStatus = 'ready' | 'on-mission' | 'refitting' | 'strained';
+
+/** Display label for what the asset is doing; `status` is the machine field. */
+export type MilitaryMission = string;
+
+/** Static asset template (data side). */
+export interface MilitaryAssetDef {
+  id: string;
+  factionId: PlayableFactionId;
+  name: string;
+  type: MilitaryAssetType;
+  theatre: TheatreId;
+  assignedNodeIds: MapNodeId[];
+  tags: string[];
+  showcaseText: string;
+  initial: { readiness: number; strength: number; logistics: number; exposure: number };
+}
+
+/** Live asset instance in GameState. */
+export interface MilitaryAssetState {
+  id: string;
+  templateId: string;
+  factionId: PlayableFactionId;
+  name: string;
+  type: MilitaryAssetType;
+  theatre: TheatreId;
+  assignedNodeIds: MapNodeId[];
+  readiness: number;
+  strength: number;
+  logistics: number;
+  exposure: number;
+  mission: MilitaryMission;
+  status: MilitaryStatus;
+  activeOperationId?: string;
+  operationEndsWeek?: number;
+  tags: string[];
+  showcaseText: string;
+}
+
+export interface MilitaryOperationTemplate {
+  id: string;
+  name: string;
+  description: string;
+  eligibleAssetTypes: MilitaryAssetType[];
+  /** Omit for all factions. */
+  eligibleFactionIds?: PlayableFactionId[];
+  /** Informational in v0.9.2; operations act via the asset's assigned nodes. */
+  targetTheatres?: TheatreId[];
+  durationWeeks: number;
+  readinessCost: number;
+  logisticsCost: number;
+  exposureChange: number;
+  successMetricEffects?: MetricDelta;
+  failureMetricEffects?: MetricDelta;
+  /** Applied to each of the asset's assigned nodes on success. */
+  assignedNodeDelta?: NodeDelta;
+  /** Fixed extra node effects on success. */
+  nodeEffects?: NodeEffectDef[];
+  /** Applied through the war front engine on success. */
+  warFrontEffects?: WarFrontEffect[];
+  /** Matched against active campaigns' counterActionTags on success. */
+  campaignCounterTags?: string[];
+  /** 0..1 baseline failure pressure; combined with asset gauges. */
+  risk: number;
+  riskLabel: string;
+  tags: string[];
+}
+
+// ---------------------------------------------------------------------------
 // Delayed consequences (scheduled effects)
 // ---------------------------------------------------------------------------
 
@@ -684,7 +770,8 @@ export type TimelineEntryType =
   | 'phase'
   | 'risk'
   | 'scheduled'
-  | 'map';
+  | 'map'
+  | 'military';
 
 export interface TimelineEntry {
   id: string;
@@ -815,6 +902,8 @@ export interface GameState {
   activePressureCampaigns: ActivePressureCampaign[];
   /** Off-map world-war fronts that spill pressure into Malaysia and ASEAN. */
   warFronts: WarFrontStateMap;
+  /** The player faction's named military assets. */
+  militaryAssets: MilitaryAssetState[];
   flags: string[];
   ending: EndingResult | null;
 }

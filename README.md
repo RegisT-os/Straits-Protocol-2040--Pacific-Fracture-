@@ -9,13 +9,56 @@ pivoted hard to APAC. Taiwan and its allies are fighting a major Pacific war
 against a weakened, dangerous China. Cyberattacks are weather. Satellites are
 contested. ASEAN cannot decide which meeting room to use.
 
-This is v0.9: Major Power Playable Factions. Malaysia remains the default
-middle-power survival campaign, and the setup flow now supports seven typed,
-deterministic, data-driven playable perspectives: Malaysia, Singapore,
-Indonesia, Taiwan Allied Command, US Pacific Command, European Defence Compact,
-and Russia Eurasian Network. v0.9 keeps role mechanics shared, keeps the ending
-triggers compact, and extends faction-specific setup copy, actions, scorecard
-emphasis, and ending overlays to the new major-power command seats.
+This is v0.9.2: War Room UI Revamp + Military Operations Foundation. The game
+moved from a metrics dashboard toward a turn-based war-room command sim: a
+command bar with a crisis-severity chip, a tabbed main theatre board, a
+compact situation column, a filterable timeline, and — new this slice — a
+military layer with named, ownable assets and assignable operations. The seven
+playable command seats (Malaysia, Singapore, Indonesia, Taiwan Allied Command,
+US Pacific Command, European Defence Compact, Russia Eurasian Network) are
+unchanged; every faction now also fields three military assets.
+
+The design intent, phased roadmap, and technical contracts for this revamp
+live in `docs/WAR_GAME_REVAMP_PLAN.md`, `docs/WAR_ROOM_UI_REVAMP_PLAN.md`, and
+`docs/MILITARY_OPERATIONS_DESIGN.md`.
+
+### War room layout (v0.9.2)
+
+- **Command bar** — title, faction, role, difficulty, week, phase, a derived
+  crisis-severity chip (HOLDING / STRAINED / CRITICAL), action-slot counter,
+  and save / abandon / advance.
+- **Main theatre board** — one large mode-switched surface with five tabs:
+  **Strategic Map**, **War Fronts**, **Military**, **Campaigns**, and
+  **Intelligence** (a state-derived top-risks + counterplay briefing). The map,
+  fronts, and campaigns panels are the existing components, promoted to
+  full-board size.
+- **Situation panel** — compact right column: selected-node context, war-front
+  bars, active campaigns, and actor activity at a glance.
+- **Timeline** — collapsible, with filter chips (All / You / Actors / Events /
+  Map / Fronts / Campaigns / Military / Delayed). Filtering is display-only and
+  never touches the simulation.
+
+### Military assets and operations (v0.9.2)
+
+- Each faction starts with **three named, faction-flavored assets** (e.g. US
+  PACOM's Carrier Strike Group Pacific, Allied Logistics Fleet, Orbital Recon
+  Detachment). Every asset tracks readiness, strength, logistics, and exposure
+  (0–100, clamped), a mission, a status (ready / on-mission / refitting /
+  strained), assigned map nodes, tags, and showcase text, and renders a
+  stylized inline-SVG silhouette — no external images.
+- **Eight operation templates** (Maritime Patrol Surge, Convoy Escort Corridor,
+  Counter-Blockade Screen, Port Defense Lockdown, Subsurface Deterrence Patrol,
+  Orbital Recon Support, Cyber-EW Maritime Shield, Humanitarian Corridor
+  Escort). Assigning one pays readiness/logistics/exposure up front; the
+  operation ticks weekly and resolves on a **seeded, deterministic** success
+  roll based on the asset's condition and the operation's risk.
+- On success, an operation applies modest metric effects, war-front intensity
+  reductions, map-node deltas on the asset's assigned nodes, and degrades
+  matching pressure campaigns (via counter tags). On failure it applies a small
+  penalty and raises exposure. Idle/refitting assets recover readiness and
+  logistics and shed exposure over time. Operations never consume an action
+  slot and are never required to advance a week — military is a strong,
+  expensive counter, not an instant-win button.
 
 ## How to play
 
@@ -250,19 +293,25 @@ determinism breaks; if faction replay determinism breaks; if scheduled effects
 fail; if map incidents or targeted actions fail; if pressure campaigns fail to
 start, refresh, complete, or disrupt; if war fronts fail to initialize, derive
 status, tick deterministically, or spill into campaigns; if save migration
-v1-v6 fails; if faction-specific actions are missing or wrongly visible; if
-faction ending overlays, scorecards, war-front summaries, pressure campaign
-summaries or defining-decision summaries fail to generate for any faction; or
-if the Malaysia playability floor regresses. The retained greedy floor is 14/15
-Analyst, 10/15 Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
+v1-v7 fails; if faction-specific actions are missing or wrongly visible; if any
+faction fails to initialize three clamped military assets with eligible
+operations; if operation assignment, deterministic completion, campaign
+counter, or v6->v7 asset migration and repair fail; if faction ending overlays,
+scorecards, war-front summaries, pressure campaign summaries or defining-decision
+summaries fail to generate for any faction; or if the Malaysia playability floor
+regresses. The retained greedy floor is 14/15 Analyst, 10/15 Adviser, and 4/15
+Crisis Chair campaigns reaching week 104, and the greedy sweep reports military
+operation completion counts.
 
 `npm run smoke` serves the built app and drives Chromium through setup, major
-power faction selection, US/Russia role-copy checks, faction-specific action
-visibility, targeted action selection, War Fronts and Active Campaigns
-rendering, front readability text, deterministic orbital campaign injection, 8
-turns, front update verification, manual save, reload, save/load preservation
-for a major-power faction, map, campaign, and war-front state, then injects a
-deterministic ending save to verify the faction-aware ending screen, campaign
+power faction selection, US/Russia role-copy checks, the war-room shell
+(command bar, board-mode tabs, situation panel), the War Fronts board mode,
+targeted action selection, a v6 save injection that must migrate military
+assets in, the Military board mode (asset card, inline-SVG silhouette, operation
+assignment, active mission), a timeline filter, 8 turns, deterministic orbital
+campaign injection and front update verification, save/reload preservation of
+map, campaign, war-front, and active military operation state, and finally a
+deterministic ending save that verifies the faction-aware ending screen,
 scorecard, war-front outcome summary, pressure campaign summary, and defining
 decisions. Set `CHROMIUM_PATH` if Chromium is not at the default script path.
 
@@ -283,6 +332,8 @@ src/
       incidents.ts
       pressureCampaigns.ts
       warFronts.ts
+      militaryAssets.ts        # 3 assets per faction
+      militaryOperations.ts    # 8 operation templates
       endings.ts
       initialState.ts
     engine/
@@ -294,21 +345,35 @@ src/
       mapEngine.ts
       pressureCampaignEngine.ts
       warFrontEngine.ts
+      militaryEngine.ts        # assign / tick / recover / repair
+      intelligenceEngine.ts    # state-derived situation report
       actionEngine.ts
       endingEngine.ts
-      saveEngine.ts
+      saveEngine.ts            # versioned migrations, now at v7
   ui/
     CampaignSetup.tsx
-    GameShell.tsx
+    GameShell.tsx              # war-room layout host
+    CommandBar.tsx
     MetricsBar.tsx
     CommandPanel.tsx
+    MainTheatreBoard.tsx       # tabbed board; boardModes.ts + BoardModeTabs.tsx
     StrategicMap.tsx
-    ActorPanel.tsx
     WarFrontsPanel.tsx
     ActiveCampaignsPanel.tsx
-    TimelineFeed.tsx
+    MilitaryOperationsPanel.tsx
+    MilitaryAssetCard.tsx
+    MilitaryAssetSilhouette.tsx
+    OperationAssignmentPanel.tsx
+    IntelligencePanel.tsx
+    SituationPanel.tsx
+    ActorPanel.tsx
+    TimelineFeed.tsx           # timelineFilters.ts + TimelineControls.tsx
     EventModal.tsx
     EndingScreen.tsx
+docs/
+  WAR_GAME_REVAMP_PLAN.md
+  WAR_ROOM_UI_REVAMP_PLAN.md
+  MILITARY_OPERATIONS_DESIGN.md
 scripts/
   sim.ts
   smoke.mjs
@@ -317,8 +382,22 @@ scripts/
 Determinism: the state stores `seed` and `rngCursor`; loaded saves replay the
 same future. Engines never call `Math.random`.
 
-## Known limitations (v0.9)
+## Known limitations (v0.9.2)
 
+- Military assets are four gauges, a mission, and a silhouette — there is no
+  tactical combat, unit stacking, hex movement, or attrition modeling.
+- Each faction fields three assets and eight shared operation templates; the
+  asset/operation catalogues in `MILITARY_OPERATIONS_DESIGN.md` are larger than
+  what ships in this slice.
+- Operation outcomes are a single seeded success/failure roll; richer branching
+  and exposure consequences are deferred to v0.9.4.
+- Military does not yet feed the scorecard or ending logic directly — it only
+  moves the metrics, fronts, campaigns, and nodes those systems already read.
+- Board mode, selected asset, and timeline filter are transient UI state and are
+  intentionally not persisted (game state, including assets and active
+  operations, is).
+- The Intelligence mode is a state-derived situation estimate, not AI memory or
+  forecasting.
 - The map is a strategic board, not a geographic SVG map.
 - War fronts are off-map abstractions, not province warfare, force ratios, or
   real-time combat.
@@ -347,20 +426,24 @@ same future. Engines never call `Math.random`.
 - Completed and disrupted campaigns remain visible for campaign memory.
 - Ending logic reads metrics and flags, not map/front/faction state directly.
 
-## Recommended v1.0 scope
+## Recommended next scope
 
-- Stabilize faction balance with broader scripted runs and targeted player-path
-  tests for all seven factions.
-- Add a small number of faction-aware event text variants where Malaysia-only
-  wording is most visible.
-- Add one or two faction-specific event hooks or pressure-campaign outcome
-  events, with sim coverage.
-- Let scorecard results influence a small set of ending epilogue lines.
-- Review US PACOM Adviser/Crisis Chair, Singapore Adviser, and Russia Crisis
-  Chair balance after more playtesting.
-- Keep geographic map rendering, full diplomacy, province warfare, playable
-  China, and large tech trees out of v1.0 unless the seven-faction foundation
-  proves stable.
+Per `docs/WAR_GAME_REVAMP_PLAN.md`, the next slice is **v0.9.3 — Expanded
+Theatre Map Prep + UI polish**:
+
+- Theatre tabs / map-mode filters inside the Strategic Map so the node grid
+  stays readable as future global theatres are added (still data-only, no
+  geographic map).
+- Front drill-down in the situation panel, and faction-accent theming across
+  the war-room shell.
+- First-turn guidance derived from the Intelligence mode.
+
+Then **v0.9.4 — Military Operation Outcomes + Fleet Balance** (richer
+success/failure branches, exposure consequences, a military scorecard item)
+and **v1.0 — Release Candidate** (how-to-play, balance pass, deployment,
+release tag). Keep geographic map rendering, province warfare, playable China,
+and large tech trees out until the war-room and military foundations prove
+stable.
 
 ## Content safety
 

@@ -1,7 +1,9 @@
 import type { TimelineEntry, TimelineEntryType } from '../game/types/gameTypes';
+import { TIMELINE_FILTERS, matchesTimelineFilter, type TimelineFilterId } from './timelineFilters';
 
 interface Props {
   timeline: TimelineEntry[];
+  filter?: TimelineFilterId;
 }
 
 const TYPE_STYLE: Record<TimelineEntryType, { label: string; badge: string; border: string }> = {
@@ -13,20 +15,27 @@ const TYPE_STYLE: Record<TimelineEntryType, { label: string; badge: string; bord
   risk: { label: 'Blowback', badge: 'bg-orange-950 text-orange-400', border: 'border-l-orange-500' },
   scheduled: { label: 'Delayed', badge: 'bg-purple-950 text-purple-300', border: 'border-l-purple-500' },
   map: { label: 'Map', badge: 'bg-teal-950 text-teal-300', border: 'border-l-teal-500' },
+  military: { label: 'Military', badge: 'bg-emerald-950 text-emerald-300', border: 'border-l-emerald-500' },
 };
 
-export function TimelineFeed({ timeline }: Props) {
-  const entries = [...timeline].reverse();
+export function TimelineFeed({ timeline, filter = 'all' }: Props) {
+  const entries = timeline.filter((e) => matchesTimelineFilter(e, filter)).reverse();
+  const filterLabel = TIMELINE_FILTERS.find((f) => f.id === filter)?.label ?? 'All';
 
   return (
     <section className="flex min-h-0 flex-col rounded-lg border border-slate-800 bg-slate-900/60">
       <header className="border-b border-slate-800 px-4 py-2.5">
         <h2 className="text-sm font-semibold tracking-wide text-slate-200 uppercase">Timeline</h2>
-        <p className="text-xs text-slate-500">Newest first — everything that happened, on record.</p>
+        <p className="text-xs text-slate-500">
+          Newest first{filter !== 'all' ? ` — filtered: ${filterLabel} (${entries.length})` : ' — everything that happened, on record.'}
+        </p>
       </header>
       <div className="feed-scroll min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+        {entries.length === 0 && (
+          <p className="text-xs text-slate-500">No {filterLabel.toLowerCase()} entries yet.</p>
+        )}
         {entries.map((entry) => {
-          const style = TYPE_STYLE[entry.type];
+          const style = TYPE_STYLE[entry.type] ?? TYPE_STYLE.system;
           return (
             <div
               key={entry.id}
