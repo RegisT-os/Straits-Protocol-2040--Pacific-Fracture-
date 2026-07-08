@@ -1,7 +1,7 @@
 import type { ActionDef, GameState, MapNodeId } from '../game/types/gameTypes';
 import { ACTIONS } from '../game/data/actions';
 import { NODE_MAP } from '../game/data/mapNodes';
-import { getActionAvailability } from '../game/engine/actionEngine';
+import { getActionAvailability, isActionVisibleForFaction } from '../game/engine/actionEngine';
 import { deltaChips } from './format';
 
 interface Props {
@@ -37,7 +37,7 @@ const CATEGORY_COLOR: Record<ActionDef['category'], string> = {
 };
 
 export function CommandPanel({ state, pendingActions, slots, onToggle, onSetTarget }: Props) {
-  const entries = ACTIONS.map((action) => ({
+  const entries = ACTIONS.filter((action) => isActionVisibleForFaction(state, action)).map((action) => ({
     action,
     availability: getActionAvailability(state, action),
   }));

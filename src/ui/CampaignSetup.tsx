@@ -1,16 +1,18 @@
 import { useState } from 'react';
-import type { DifficultyId, RoleId } from '../game/types/gameTypes';
+import type { DifficultyId, PlayableFactionId, RoleId } from '../game/types/gameTypes';
 import { ROLES } from '../game/data/roles';
 import { DIFFICULTIES } from '../game/data/difficulty';
+import { DEFAULT_PLAYABLE_FACTION_ID, PLAYABLE_FACTIONS } from '../game/data/playableFactions';
 
 interface Props {
   saveExists: boolean;
   savedAtLabel: string | null;
-  onStart: (roleId: RoleId, difficultyId: DifficultyId) => void;
+  onStart: (factionId: PlayableFactionId, roleId: RoleId, difficultyId: DifficultyId) => void;
   onLoad: () => void;
 }
 
 export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Props) {
+  const [faction, setFaction] = useState<PlayableFactionId>(DEFAULT_PLAYABLE_FACTION_ID);
   const [selected, setSelected] = useState<RoleId | null>(null);
   const [difficulty, setDifficulty] = useState<DifficultyId>('adviser');
 
@@ -38,12 +40,52 @@ export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Pro
             contested. ASEAN cannot decide which meeting room to use.
           </p>
           <p className="mt-3 text-slate-400">
-            You advise Malaysia — a middle power trying to survive World War 3.5 without becoming
-            anyone&rsquo;s client state. One turn is one week. The campaign runs 104 weeks. Choose
-            who you are.
+            Choose a playable command perspective, then choose the archetype advising that command.
+            One turn is one week. The campaign runs 104 weeks.
           </p>
         </div>
 
+        <h3 className="mb-3 text-center text-sm font-semibold tracking-wide text-slate-300 uppercase">
+          Step 1 · Playable Faction
+        </h3>
+        <div className="mb-8 grid gap-4 sm:grid-cols-2">
+          {PLAYABLE_FACTIONS.map((candidate) => {
+            const active = faction === candidate.id;
+            return (
+              <button
+                key={candidate.id}
+                type="button"
+                onClick={() => setFaction(candidate.id)}
+                className={`rounded-lg border p-4 text-left transition-colors ${
+                  active
+                    ? 'border-cyan-500 bg-cyan-950/40 ring-1 ring-cyan-500'
+                    : 'border-slate-800 bg-slate-900/60 hover:border-slate-600'
+                }`}
+              >
+                <h3 className="text-base font-semibold text-slate-100">{candidate.name}</h3>
+                <p className="mt-0.5 text-xs text-cyan-400">{candidate.commandPerspective}</p>
+                <p className="mt-2 text-xs leading-relaxed text-slate-400">{candidate.description}</p>
+                <p className="mt-3 font-mono text-[10px] tracking-wide text-amber-400 uppercase">
+                  Strategic priorities
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                  {candidate.strategicPriorities.slice(0, 3).join(' / ')}
+                </p>
+                <p className="mt-3 font-mono text-[10px] tracking-wide text-red-400 uppercase">
+                  Collapse risks
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                  {candidate.collapseRisks.slice(0, 3).join(' / ')}
+                </p>
+                <p className="mt-3 text-xs leading-relaxed text-slate-500">{candidate.difficultyFlavor}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        <h3 className="mb-3 text-center text-sm font-semibold tracking-wide text-slate-300 uppercase">
+          Step 2 · Role Archetype
+        </h3>
         <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {ROLES.map((role) => {
             const active = selected === role.id;
@@ -69,7 +111,7 @@ export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Pro
                   ))}
                   {role.weaknesses.map((w) => (
                     <p key={w} className="text-red-400">
-                      − {w}
+                      - {w}
                     </p>
                   ))}
                 </div>
@@ -79,7 +121,7 @@ export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Pro
         </div>
 
         <h3 className="mb-3 text-center text-sm font-semibold tracking-wide text-slate-300 uppercase">
-          Difficulty
+          Step 3 · Difficulty
         </h3>
         <div className="mb-8 grid gap-3 sm:grid-cols-3">
           {DIFFICULTIES.map((diff) => {
@@ -107,10 +149,10 @@ export function CampaignSetup({ saveExists, savedAtLabel, onStart, onLoad }: Pro
           <button
             type="button"
             disabled={!selected}
-            onClick={() => selected && onStart(selected, difficulty)}
+            onClick={() => selected && onStart(faction, selected, difficulty)}
             className="rounded-md bg-cyan-600 px-8 py-3 text-sm font-semibold tracking-wide text-white uppercase transition-colors hover:bg-cyan-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"
           >
-            {selected ? 'Start Campaign' : 'Select a role to begin'}
+            {selected ? 'Step 4 · Start Campaign' : 'Select a role to begin'}
           </button>
           {saveExists && (
             <button

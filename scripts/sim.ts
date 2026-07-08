@@ -20,9 +20,10 @@ import { ACTORS } from '../src/game/data/actors';
 import { EVENTS } from '../src/game/data/events';
 import { INCIDENTS } from '../src/game/data/incidents';
 import { MAP_NODES } from '../src/game/data/mapNodes';
+import { DEFAULT_PLAYABLE_FACTION_ID, PLAYABLE_FACTIONS } from '../src/game/data/playableFactions';
 import { PRESSURE_CAMPAIGNS } from '../src/game/data/pressureCampaigns';
 import { WAR_FRONTS } from '../src/game/data/warFronts';
-import { getActionAvailability, getActionSlots } from '../src/game/engine/actionEngine';
+import { getActionAvailability, getActionSlots, isActionVisibleForFaction } from '../src/game/engine/actionEngine';
 import { addIncidents, applyNodeDelta, tickMap } from '../src/game/engine/mapEngine';
 import {
   disruptPressureCampaignsForAction,
@@ -54,6 +55,7 @@ import type {
   IncidentSpawnDef,
   MapNodeId,
   NodeEffectDef,
+  PlayableFactionId,
   PressureCampaignStartDef,
   PressureCampaignTemplateId,
   RoleId,
@@ -70,9 +72,11 @@ const ROLES: RoleId[] = [
 ];
 
 const DIFFICULTIES: DifficultyId[] = ['analyst', 'adviser', 'crisis-chair'];
+const FACTIONS: PlayableFactionId[] = PLAYABLE_FACTIONS.map((faction) => faction.id);
 
 interface RunResult {
   difficulty: DifficultyId;
+  faction: PlayableFactionId;
   role: RoleId;
   final: GameState;
 }
@@ -240,6 +244,13 @@ function validateDataReferences(): void {
     check(hook.threshold >= 0 && hook.threshold <= 100, `war front campaign hook ${hook.templateId}: invalid threshold`);
   }
   for (const action of ACTIONS) validateActionMapRefs(action);
+  for (const faction of PLAYABLE_FACTIONS) {
+    for (const actionId of [...faction.uniqueActionIds, ...(faction.disabledActionIds ?? [])]) {
+      check(ACTIONS.some((action) => action.id === actionId), `faction ${faction.id}: invalid action ${actionId}`);
+    }
+    checkNodeEffects(`faction ${faction.id} start`, faction.startingMapNodeModifiers);
+    checkWarFrontEffects(`faction ${faction.id} start`, faction.startingWarFrontModifiers);
+  }
   for (const actor of ACTORS) {
     for (const move of actor.moves) validateMoveMapRefs(actor.id, move);
   }
@@ -327,9 +338,28 @@ function reportRunDiagnostics(label: string, results: RunResult[]): void {
   console.log('  final front status distribution:', Object.fromEntries(statusCounts));
 }
 
+function reportFactionSurvival(label: string, results: RunResult[]): void {
+  console.log(`\n${label} faction survival:`);
+  for (const faction of PLAYABLE_FACTIONS) {
+    const byFaction = results.filter((result) => result.faction === faction.id);
+    const summary = DIFFICULTIES.map((difficulty) => {
+      const runs = byFaction.filter((result) => result.difficulty === difficulty);
+      const full = runs.filter((result) => !result.final.ending?.early).length;
+      const early = runs.filter((result) => result.final.ending?.early).map((result) => result.final.week);
+      return `${difficulty} ${full}/${runs.length} full, avg early ${average(early)}`;
+    }).join('; ');
+    console.log(`  ${faction.shortName}: ${summary}`);
+  }
+}
+
 /** Random policy: fills all slots with random available actions. */
-function runRandom(role: RoleId, seed: number, difficulty: DifficultyId): GameState {
-  let state = createInitialState(role, seed, difficulty);
+function runRandom(
+  role: RoleId,
+  seed: number,
+  difficulty: DifficultyId,
+  faction: PlayableFactionId = DEFAULT_PLAYABLE_FACTION_ID,
+): GameState {
+  let state = createInitialState(role, seed, difficulty, faction);
   let pick = seed * 7 + 1;
   const next = () => {
     pick = (pick * 1103515245 + 12345) & 0x7fffffff;
@@ -354,14 +384,19 @@ function runRandom(role: RoleId, seed: number, difficulty: DifficultyId): GameSt
       const choice = pending.choices[Math.floor(next() * pending.choices.length)];
       state = resolvePendingEvent(state, pending.id, choice.id);
     }
-    assertClamped(state, `random ${role}/${difficulty}/${seed} week ${state.week}`);
+    assertClamped(state, `random ${faction}/${role}/${difficulty}/${seed} week ${state.week}`);
   }
   return state;
 }
 
 /** Greedy policy: fills all slots, always shoring up the weakest metrics. */
-function runGreedy(role: RoleId, seed: number, difficulty: DifficultyId): GameState {
-  let state = createInitialState(role, seed, difficulty);
+function runGreedy(
+  role: RoleId,
+  seed: number,
+  difficulty: DifficultyId,
+  faction: PlayableFactionId = DEFAULT_PLAYABLE_FACTION_ID,
+): GameState {
+  let state = createInitialState(role, seed, difficulty, faction);
   let guard = 0;
   while (state.status === 'active' && guard++ < 300) {
     const slots = getActionSlots(state);
@@ -407,7 +442,7 @@ for (const difficulty of DIFFICULTIES) {
   for (const role of ROLES) {
     for (let s = 1; s <= 2; s++) {
       const final = runRandom(role, s * 1000 + ROLES.indexOf(role), difficulty);
-      randomResults.push({ difficulty, role, final });
+      randomResults.push({ difficulty, faction: DEFAULT_PLAYABLE_FACTION_ID, role, final });
       check(
         final.status === 'ended' && final.ending !== null,
         `${role}/${difficulty}/${s}: no ending reached`,
@@ -436,6 +471,18 @@ const deterministic =
   a.week === b.week;
 check(deterministic, 'same seed + same inputs produced different outcomes');
 console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : 'BROKEN'}`);
+
+const factionA = runRandom('security-consultant', 77, 'adviser', 'singapore');
+const factionB = runRandom('security-consultant', 77, 'adviser', 'singapore');
+const factionDeterministic =
+  JSON.stringify(factionA.metrics) === JSON.stringify(factionB.metrics) &&
+  JSON.stringify(factionA.map) === JSON.stringify(factionB.map) &&
+  JSON.stringify(factionA.activePressureCampaigns) === JSON.stringify(factionB.activePressureCampaigns) &&
+  JSON.stringify(factionA.warFronts) === JSON.stringify(factionB.warFronts) &&
+  factionA.ending?.endingId === factionB.ending?.endingId &&
+  factionA.week === factionB.week;
+check(factionDeterministic, 'same faction seed + same inputs produced different outcomes');
+console.log(`Faction determinism (Singapore seed 77, replayed twice): ${factionDeterministic ? 'OK' : 'BROKEN'}`);
 
 // --- 4: scheduled effects resolve without crashing ----------------------------
 // Scripted run: take actions with delayed consequences, then idle past their
@@ -704,6 +751,7 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   check(migrated.pendingTargets !== undefined && migrated.selectedNode === null, 'v2 migration did not initialize target/selection fields');
   check(migrated.activePressureCampaigns.length === 0, 'v2 migration did not initialize pressure campaigns');
   check(Object.keys(migrated.warFronts).length === WAR_FRONTS.length, 'v2 migration did not initialize war fronts');
+  check(migrated.playableFactionId === 'malaysia', 'v2 migration did not default faction to Malaysia');
 
   const v1 = structuredClone(state) as Partial<GameState>;
   delete v1.difficulty;
@@ -721,6 +769,7 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   check(Array.isArray(migratedV1.pendingActions), 'v1 migration did not initialize pending actions');
   check(Array.isArray(migratedV1.activePressureCampaigns), 'v1 migration did not initialize pressure campaigns');
   check(Object.keys(migratedV1.warFronts).length === WAR_FRONTS.length, 'v1 migration did not initialize war fronts');
+  check(migratedV1.playableFactionId === 'malaysia', 'v1 migration did not default faction to Malaysia');
 
   const corruptV3 = structuredClone(state) as GameState;
   delete (corruptV3.map.nodes as Partial<Record<MapNodeId, unknown>>)['port-klang'];
@@ -822,7 +871,67 @@ console.log(`\nDeterminism (seed 42, replayed twice): ${deterministic ? 'OK' : '
   check(repairedV5.warFronts['pacific-war-front'].status === 'breaking', 'v5 repair did not derive front status');
   check(repairedV5.warFronts['orbital-war-front'] !== undefined, 'v5 repair did not restore missing front');
 
-  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3/v4/v5 save migration OK`);
+  const corruptV6 = structuredClone(state) as GameState;
+  corruptV6.playableFactionId = 'not-a-faction' as PlayableFactionId;
+  corruptV6.pendingActions = ['activate-continuity-authority'];
+  const repairedV6 = migrateState(corruptV6, 6);
+  check(repairedV6.playableFactionId === 'malaysia', 'v6 repair did not repair invalid playable faction');
+  check(repairedV6.pendingActions.length === 0, 'v6 repair did not prune unavailable faction action');
+
+  console.log(`\nMap systems: targeted action OK, ${incidentEntries.length} incident(s) in 30 weeks, v1/v2/v3/v4/v5/v6 save migration OK`);
+}
+
+// --- 4d: playable factions initialize and run across roles/difficulties -------
+{
+  const factionResults: RunResult[] = [];
+  for (const faction of PLAYABLE_FACTIONS) {
+    const state = createInitialState('security-consultant', 31, 'adviser', faction.id);
+    check(state.playableFactionId === faction.id, `${faction.id}: initial state used wrong faction`);
+    assertClamped(state, `${faction.id} initial state`);
+
+    for (const actionId of faction.uniqueActionIds) {
+      const action = ACTIONS.find((candidate) => candidate.id === actionId);
+      check(action !== undefined, `${faction.id}: unique action ${actionId} missing`);
+      if (action) {
+        check(isActionVisibleForFaction(state, action), `${faction.id}: unique action ${actionId} not visible`);
+      }
+    }
+    for (const actionId of faction.disabledActionIds ?? []) {
+      const action = ACTIONS.find((candidate) => candidate.id === actionId);
+      if (action) {
+        check(!isActionVisibleForFaction(state, action), `${faction.id}: disabled action ${actionId} remained visible`);
+      }
+    }
+
+    for (const difficulty of DIFFICULTIES) {
+      for (const role of ROLES) {
+        const seed = 5000 + FACTIONS.indexOf(faction.id) * 100 + DIFFICULTIES.indexOf(difficulty) * 10 + ROLES.indexOf(role);
+        const final = runGreedy(role, seed, difficulty, faction.id);
+        factionResults.push({ difficulty, faction: faction.id, role, final });
+        check(
+          final.status === 'ended' && final.ending !== null,
+          `${faction.id}/${role}/${difficulty}: no ending reached`,
+        );
+        check(final.week >= 12, `${faction.id}/${role}/${difficulty}: collapsed before week 12`);
+        assertClamped(final, `${faction.id}/${role}/${difficulty} final`);
+      }
+    }
+  }
+
+  for (const faction of FACTIONS) {
+    const analystRuns = factionResults.filter((result) => result.faction === faction && result.difficulty === 'analyst');
+    const analystFull = analystRuns.filter((result) => !result.final.ending?.early).length;
+    const adviserRuns = factionResults.filter((result) => result.faction === faction && result.difficulty === 'adviser');
+    const adviserEarlyWeeks = adviserRuns.filter((result) => result.final.ending?.early).map((result) => result.final.week);
+    check(analystFull >= 3, `${faction}: Analyst should be survivable for most roles (${analystFull}/5 full)`);
+    check(
+      adviserEarlyWeeks.every((week) => week >= 36),
+      `${faction}: Adviser collapsed too quickly (${adviserEarlyWeeks.join(', ')})`,
+    );
+  }
+
+  reportFactionSurvival('Greedy one-seed', factionResults);
+  console.log('\nPlayable factions: initialization, action visibility, migration, clamping, and all role/difficulty runs OK');
 }
 
 // --- 5: playability floor per difficulty --------------------------------------
@@ -837,7 +946,7 @@ for (const difficulty of DIFFICULTIES) {
   for (const role of ROLES) {
     for (let s = 1; s <= 3; s++) {
       const final = runGreedy(role, s * 313 + ROLES.indexOf(role), difficulty);
-      greedyResults.push({ difficulty, role, final });
+      greedyResults.push({ difficulty, faction: DEFAULT_PLAYABLE_FACTION_ID, role, final });
       floor[difficulty].total++;
       if (!final.ending?.early) floor[difficulty].full++;
       console.log(

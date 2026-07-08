@@ -252,6 +252,40 @@ export interface ActionTargeting {
 }
 
 // ---------------------------------------------------------------------------
+// Playable factions
+// ---------------------------------------------------------------------------
+
+export type PlayableFactionId =
+  | 'malaysia'
+  | 'singapore'
+  | 'indonesia'
+  | 'taiwan-allied-command';
+
+export interface PlayableFactionLabelOverrides {
+  impactLabel?: string;
+  endingSubtitle?: string;
+}
+
+export interface PlayableFactionDef {
+  id: PlayableFactionId;
+  name: string;
+  shortName: string;
+  description: string;
+  commandPerspective: string;
+  difficultyFlavor: string;
+  startingMetricModifiers: MetricDelta;
+  startingMapNodeModifiers: NodeEffectDef[];
+  startingWarFrontModifiers: WarFrontEffect[];
+  uniqueActionIds: string[];
+  disabledActionIds?: string[];
+  primaryMetrics: MetricKey[];
+  strategicPriorities: string[];
+  collapseRisks: string[];
+  victoryFocus: string;
+  factionLabelOverrides?: PlayableFactionLabelOverrides;
+}
+
+// ---------------------------------------------------------------------------
 // Global war fronts
 // ---------------------------------------------------------------------------
 
@@ -540,6 +574,7 @@ export interface ActionDef {
   description: string;
   category: ActionCategory;
   roleRestriction?: RoleId[];
+  factionRestriction?: PlayableFactionId[];
   phaseRestriction?: PhaseId[];
   metricEffects: MetricDelta;
   actorEffects?: ActorEffect[];
@@ -695,6 +730,7 @@ export interface GameState {
   week: number;
   maxWeeks: number;
   phase: PhaseId;
+  playableFactionId: PlayableFactionId;
   selectedRole: RoleId | null;
   difficulty: DifficultyId;
   status: GameStatus;

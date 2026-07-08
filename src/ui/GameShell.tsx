@@ -2,6 +2,7 @@ import type { GameState, MapNodeId } from '../game/types/gameTypes';
 import { getPhaseInfo } from '../game/data/initialState';
 import { getRole } from '../game/data/roles';
 import { getDifficulty } from '../game/data/difficulty';
+import { getPlayableFaction } from '../game/data/playableFactions';
 import { getActionSlots } from '../game/engine/actionEngine';
 import { getPendingEvent } from '../game/engine/eventEngine';
 import { getAction } from '../game/data/actions';
@@ -38,6 +39,7 @@ export function GameShell({
   saveFlash,
 }: Props) {
   const phaseInfo = getPhaseInfo(state.phase);
+  const faction = getPlayableFaction(state.playableFactionId);
   const role = state.selectedRole ? getRole(state.selectedRole) : undefined;
   const difficulty = getDifficulty(state.difficulty);
   const pendingEvent = getPendingEvent(state);
@@ -71,6 +73,9 @@ export function GameShell({
             title={phaseInfo.description}
           >
             Phase {phaseInfo.id}: {phaseInfo.name}
+          </span>
+          <span className="rounded bg-slate-800 px-2 py-0.5 text-slate-200" title={faction.commandPerspective}>
+            {faction.shortName}
           </span>
           {role && <span className="rounded bg-cyan-950 px-2 py-0.5 text-cyan-300">{role.name}</span>}
           <span

@@ -32,6 +32,7 @@ export const ACTIONS: ActionDef[] = [
     description:
       'Coordinate a Bank Negara market confidence operation: liquidity signalling, settlement reassurance, quiet calls to primary dealers.',
     category: 'finance',
+    factionRestriction: ['malaysia'],
     nodeEffects: [
       { nodeId: 'bnm-core', riskLevel: -8, stability: 5 },
       { nodeId: 'bursa-node', riskLevel: -5 },
@@ -266,6 +267,56 @@ export const ACTIONS: ActionDef[] = [
     cooldown: 8,
   },
   {
+    id: 'activate-continuity-authority',
+    name: 'Activate Continuity Authority',
+    description:
+      'Centralize market, port, border and cyber continuity decisions under a standing Singapore crisis authority.',
+    category: 'finance',
+    factionRestriction: ['singapore'],
+    nodeEffects: [
+      { nodeId: 'singapore', stability: 7, riskLevel: -5 },
+      { nodeId: 'singapore-strait', stability: 4, riskLevel: -4 },
+      { nodeId: 'financial-timing-link', stability: 3, riskLevel: -3 },
+    ],
+    metricEffects: {
+      financialContinuity: 8,
+      institutionalTrust: 4,
+      cyberResilience: 2,
+      sovereignty: 1,
+      alignmentPressure: -3,
+      mentalLoad: 2,
+    },
+    actorEffects: [{ actorId: 'singapore-authority', relationship: 5, pressure: -4 }],
+    warFrontEffects: [
+      { frontId: 'financial-war-front', intensity: -5, momentum: -6, modifier: 'Continuity authority' },
+      { frontId: 'cyber-war-front', intensity: -2, momentum: -3, modifier: 'Continuity command' },
+    ],
+    cooldown: 5,
+  },
+  {
+    id: 'ringfence-financial-flows',
+    name: 'Ringfence Financial Flows',
+    description:
+      'Use liquidity windows, settlement buffers and guarded capital controls to keep panic from reaching the core rails.',
+    category: 'finance',
+    factionRestriction: ['singapore'],
+    nodeEffects: [
+      { nodeId: 'singapore', stability: 5, riskLevel: -4 },
+      { nodeId: 'bnm-core', riskLevel: -3 },
+      { nodeId: 'bursa-node', riskLevel: -3 },
+    ],
+    metricEffects: {
+      financialContinuity: 10,
+      institutionalTrust: 2,
+      sovereignty: -1,
+      alignmentPressure: -2,
+      publicReality: -1,
+    },
+    actorEffects: [{ actorId: 'financial-markets', pressure: -7 }],
+    warFrontEffects: [{ frontId: 'financial-war-front', intensity: -7, momentum: -8, modifier: 'Financial ringfence' }],
+    cooldown: 6,
+  },
+  {
     id: 'propose-asean-shield',
     name: 'Propose ASEAN Shield',
     description:
@@ -278,6 +329,51 @@ export const ACTIONS: ActionDef[] = [
       { actorId: 'china-frag', pressure: 4 },
     ],
     flagsAdded: ['asean-shield'],
+    once: true,
+  },
+  {
+    id: 'expand-maritime-patrol-zone',
+    name: 'Expand Maritime Patrol Zone',
+    description:
+      'Push coordinated patrols through Batam, Malacca and the wider archipelago to turn scale into maritime control.',
+    category: 'maritime',
+    factionRestriction: ['indonesia'],
+    targeting: {
+      nodeIds: ['batam-corridor', 'malacca-strait', 'malaysian-eez'],
+      effect: { stability: 6, riskLevel: -9 },
+      hint: 'Expand patrol coverage around',
+    },
+    nodeEffects: [{ nodeId: 'jakarta', stability: 2 }],
+    metricEffects: { maritimeControl: 9, energyAssurance: 3, aseanCohesion: 2, alignmentPressure: 2 },
+    actorEffects: [{ actorId: 'indonesia-maritime', relationship: 5, pressure: -4 }],
+    warFrontEffects: [
+      { frontId: 'maritime-war-front', intensity: -6, momentum: -7, modifier: 'Archipelago patrol zone' },
+      { frontId: 'pacific-war-front', intensity: -1, momentum: -2, modifier: 'ASEAN maritime depth' },
+    ],
+    cooldown: 5,
+  },
+  {
+    id: 'lead-asean-shield-proposal',
+    name: 'Lead ASEAN Shield Proposal',
+    description:
+      'Put Jakarta at the center of a practical maritime-cyber shield: patrol coordination, incident hotlines and shared warning.',
+    category: 'diplomacy',
+    factionRestriction: ['indonesia'],
+    phaseRestriction: [2, 3, 4, 5],
+    nodeEffects: [
+      { nodeId: 'jakarta', stability: 4, riskLevel: -3 },
+      { nodeId: 'batam-corridor', stability: 2 },
+    ],
+    metricEffects: { aseanCohesion: 10, maritimeControl: 4, sovereignty: 2, institutionalTrust: -1, personalStamina: -3 },
+    actorEffects: [
+      { actorId: 'indonesia-maritime', relationship: 6, pressure: -5 },
+      { actorId: 'china-frag', pressure: 3 },
+    ],
+    flagsAdded: ['asean-shield'],
+    warFrontEffects: [
+      { frontId: 'maritime-war-front', intensity: -3, momentum: -4, modifier: 'Indonesia ASEAN shield' },
+      { frontId: 'pacific-war-front', intensity: -2, momentum: -3, modifier: 'ASEAN shield diplomacy' },
+    ],
     once: true,
   },
   {
@@ -346,6 +442,67 @@ export const ACTIONS: ActionDef[] = [
       metricEffects: { institutionalTrust: -4, publicReality: -3 },
       report: 'A takedown operation is publicly linked to surveillance overreach. The opposition demands an inquiry.',
     },
+    cooldown: 5,
+  },
+  {
+    id: 'harden-semiconductor-corridor',
+    name: 'Harden Semiconductor Corridor',
+    description:
+      'Fortify chip logistics, clean-room power, port scheduling and timing links between Taipei, Penang and allied shipping.',
+    category: 'strategy',
+    factionRestriction: ['taiwan-allied-command'],
+    nodeEffects: [
+      { nodeId: 'taipei-command', stability: 6, riskLevel: -5, cyberExposure: -3 },
+      { nodeId: 'penang', stability: 4, riskLevel: -3 },
+      { nodeId: 'financial-timing-link', stability: 3, riskLevel: -3 },
+    ],
+    metricEffects: {
+      sovereignty: 2,
+      alignmentPressure: -4,
+      financialContinuity: 5,
+      cyberResilience: 4,
+      orbitalAccess: 3,
+      mentalLoad: 2,
+    },
+    actorEffects: [{ actorId: 'taiwan-allied', relationship: 5, pressure: -4 }],
+    flagsAdded: ['semiconductor-corridor-hardened'],
+    warFrontEffects: [
+      { frontId: 'pacific-war-front', intensity: -5, momentum: -6, modifier: 'Semiconductor corridor hardened' },
+      { frontId: 'cyber-war-front', intensity: -2, momentum: -3, modifier: 'Chip logistics defense' },
+      { frontId: 'orbital-war-front', intensity: -2, momentum: -3, modifier: 'Timing corridor fallback' },
+    ],
+    cooldown: 6,
+  },
+  {
+    id: 'deploy-counter-blockade-cyber-cell',
+    name: 'Deploy Counter-Blockade Cyber Cell',
+    description:
+      'Fuse cyber, maritime and orbital warning to frustrate blockade logistics without widening the war more than necessary.',
+    category: 'cyber',
+    factionRestriction: ['taiwan-allied-command'],
+    nodeEffects: [
+      { nodeId: 'china-coastal-warzone', cyberExposure: 4, riskLevel: 2 },
+      { nodeId: 'maritime-imaging', stability: 4, riskLevel: -4 },
+      { nodeId: 'commercial-satnet', stability: 3, riskLevel: -3 },
+    ],
+    metricEffects: {
+      sovereignty: 1,
+      alignmentPressure: -3,
+      cyberResilience: 8,
+      maritimeControl: 4,
+      orbitalAccess: 3,
+      publicReality: -2,
+      mentalLoad: 3,
+    },
+    actorEffects: [
+      { actorId: 'china-frag', pressure: 4, aggression: 2 },
+      { actorId: 'taiwan-allied', pressure: -5 },
+    ],
+    warFrontEffects: [
+      { frontId: 'pacific-war-front', intensity: -6, momentum: -7, modifier: 'Counter-blockade cyber cell' },
+      { frontId: 'cyber-war-front', intensity: -4, momentum: -5, modifier: 'Blockade cyber disruption' },
+      { frontId: 'orbital-war-front', intensity: -2, momentum: -3, modifier: 'Orbital warning fusion' },
+    ],
     cooldown: 5,
   },
   {

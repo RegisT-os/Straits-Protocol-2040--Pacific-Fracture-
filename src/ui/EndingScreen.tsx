@@ -1,6 +1,7 @@
 import type { GameState } from '../game/types/gameTypes';
 import { getEnding } from '../game/data/endings';
 import { METRIC_INFO } from '../game/data/initialState';
+import { getPlayableFaction } from '../game/data/playableFactions';
 import { metricStatus, STATUS_TEXT } from './format';
 
 interface Props {
@@ -17,15 +18,22 @@ const TONE_STYLE = {
 export function EndingScreen({ state, onRestart }: Props) {
   if (!state.ending) return null;
   const ending = getEnding(state.ending.endingId);
+  const faction = getPlayableFaction(state.playableFactionId);
 
   return (
     <div className="min-h-screen bg-slate-950">
       <div className="mx-auto max-w-3xl px-4 py-12">
         <p className="text-center font-mono text-xs tracking-[0.3em] text-slate-500 uppercase">
-          Campaign {state.ending.early ? `ended early — week ${state.ending.week}` : 'complete — week 104'}
+          Campaign {state.ending.early ? `ended early - week ${state.ending.week}` : 'complete - week 104'}
+        </p>
+        <p className="mt-2 text-center text-sm font-semibold text-cyan-300">
+          {faction.name} · {faction.commandPerspective}
         </p>
         <div className={`mt-4 rounded-lg border bg-slate-900/70 p-6 text-center ${TONE_STYLE[ending.tone]}`}>
           <h1 className="text-3xl font-bold">{ending.title}</h1>
+          <p className="mt-2 text-xs tracking-wide text-slate-500 uppercase">
+            {faction.factionLabelOverrides?.endingSubtitle ?? faction.victoryFocus}
+          </p>
           <p className="mt-4 text-sm leading-relaxed text-slate-300">{ending.description}</p>
         </div>
 
@@ -67,7 +75,7 @@ export function EndingScreen({ state, onRestart }: Props) {
 
         <p className="mt-6 text-xs text-slate-500">
           {state.completedActions.length} actions taken · {state.timeline.length} timeline entries ·
-          difficulty {state.difficulty} · seed {state.seed}
+          faction {faction.shortName} · difficulty {state.difficulty} · seed {state.seed}
         </p>
 
         <div className="mt-8 text-center">

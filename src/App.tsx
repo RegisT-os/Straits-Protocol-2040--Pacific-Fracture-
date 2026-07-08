@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DifficultyId, GameState, MapNodeId, RoleId } from './game/types/gameTypes';
+import type { DifficultyId, GameState, MapNodeId, PlayableFactionId, RoleId } from './game/types/gameTypes';
 import { createInitialState } from './game/data/initialState';
 import { randomSeed } from './game/engine/rng';
 import {
@@ -32,8 +32,8 @@ export default function App() {
     flashTimer.current = window.setTimeout(() => setSaveFlash(false), 1500);
   }, []);
 
-  const handleStart = useCallback((roleId: RoleId, difficultyId: DifficultyId) => {
-    const fresh = createInitialState(roleId, randomSeed(), difficultyId);
+  const handleStart = useCallback((factionId: PlayableFactionId, roleId: RoleId, difficultyId: DifficultyId) => {
+    const fresh = createInitialState(roleId, randomSeed(), difficultyId, factionId);
     setState(fresh);
     saveGame(fresh);
     setSaveExists(true);

@@ -9,7 +9,7 @@
 //      set CHROMIUM_PATH if your browser lives elsewhere.
 //
 // Flow: serve dist/ via `vite preview`, then in a real browser:
-// pick a role + difficulty, start a campaign, verify the strategic map
+// pick a faction + role + difficulty, start a campaign, verify the strategic map
 // (node selection + detail), fire a map-targeted action with a chosen
 // target, verify the War Fronts and Active Campaigns panels, inject a
 // deterministic pressure campaign, play 8 turns (resolving interactive
@@ -74,17 +74,22 @@ try {
 
   await page.goto(`http://localhost:${PORT}`);
   await page.waitForSelector('text=Pacific Fracture');
+  await page.waitForSelector('text=Step 1');
+  await page.waitForSelector('text=Playable Faction');
+  await page.waitForSelector('button:has-text("Singapore")');
   console.log('setup screen ok');
 
+  await page.click('button:has-text("Singapore")');
   await page.click('text=Security Consultant');
   await page.click('text=Analyst');
   await page.click('button:has-text("Start Campaign")');
   await page.waitForSelector('text=Week 1/104');
+  await page.waitForSelector('text=Singapore');
   await page.waitForSelector('text=Actions selected:');
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
   await page.waitForSelector('text=Drivers:');
-  await page.waitForSelector('text=Malaysia impact:');
+  await page.waitForSelector('text=Singapore impact:');
   await page.waitForSelector('text=Counterplay:');
   await page.waitForSelector('text=Campaign risk:');
   await page.waitForSelector('text=Trend:');
@@ -92,10 +97,12 @@ try {
   await page.waitForSelector('text=Counter tags:');
   await page.waitForSelector('text=Recent shift:');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
+  await page.waitForSelector('text=Activate Continuity Authority');
+  await page.waitForSelector('text=Ringfence Financial Flows');
   await page.waitForSelector('text=Activate Terrestrial Navigation Backup');
   await page.waitForSelector('text=Harden Financial Timing Backup');
   await page.waitForSelector('text=Lease Allied Orbital Coverage');
-  console.log('campaign started (Analyst difficulty, slot counter and war fronts visible)');
+  console.log('Singapore campaign started (Analyst difficulty, slot counter and war fronts visible)');
 
   // Strategic map renders; a node can be selected and shows detail.
   await page.waitForSelector('h2:has-text("Strategic Map")');
@@ -119,7 +126,10 @@ try {
     const raw = localStorage.getItem(key);
     if (!raw) throw new Error('save missing before campaign injection');
     const envelope = JSON.parse(raw);
-    envelope.version = 5;
+    envelope.version = 6;
+    if (envelope.state.playableFactionId !== 'singapore') {
+      throw new Error(`expected Singapore save, got ${envelope.state.playableFactionId}`);
+    }
     envelope.state.activePressureCampaigns = [
       {
         id: 'smoke-pnt-degradation-cycle',
@@ -152,6 +162,7 @@ try {
   });
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
+  await page.waitForSelector('text=Singapore');
   await page.waitForSelector('text=PNT Degradation Cycle');
   await page.waitForSelector('text=INT 1');
   console.log('active campaigns panel renders orbital campaign and save/load works');
@@ -200,6 +211,7 @@ try {
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=Week 9/104');
+  await page.waitForSelector('text=Singapore');
   await page.waitForSelector('h2:has-text("Strategic Map")');
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
@@ -216,7 +228,11 @@ try {
   const frontsAfterLoad = await page.evaluate(() => {
     const raw = localStorage.getItem('straits-protocol-2040-save');
     if (!raw) throw new Error('save missing after reload');
-    return Object.keys(JSON.parse(raw).state.warFronts ?? {}).length;
+    const state = JSON.parse(raw).state;
+    if (state.playableFactionId !== 'singapore') {
+      throw new Error(`expected Singapore faction after reload, got ${state.playableFactionId}`);
+    }
+    return Object.keys(state.warFronts ?? {}).length;
   });
   if (frontsAfterLoad !== 6) throw new Error(`expected 6 war fronts after reload, got ${frontsAfterLoad}`);
   console.log('save/load round-trip ok - map, campaign, and war front state survived');

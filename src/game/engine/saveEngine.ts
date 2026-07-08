@@ -4,20 +4,22 @@ import type {
   MapIncident,
   MapNodeId,
   MapNodeState,
+  PlayableFactionId,
   PressureCampaignStatus,
   WarFrontState,
 } from '../types/gameTypes';
 import { getAction } from '../data/actions';
 import { getIncident } from '../data/incidents';
 import { MAP_NODES, NODE_MAP } from '../data/mapNodes';
+import { DEFAULT_PLAYABLE_FACTION_ID, PLAYABLE_FACTION_MAP } from '../data/playableFactions';
 import { getPressureCampaign } from '../data/pressureCampaigns';
 import { WAR_FRONTS } from '../data/warFronts';
-import { getActionSlots } from './actionEngine';
+import { getActionAvailability, getActionSlots } from './actionEngine';
 import { createInitialMap } from './mapEngine';
 import { createInitialWarFronts, deriveWarFrontStatus } from './warFrontEngine';
 
 const SAVE_KEY = 'straits-protocol-2040-save';
-const SAVE_VERSION = 5;
+const SAVE_VERSION = 6;
 
 interface SaveEnvelope {
   version: number;
@@ -50,6 +52,10 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 function isMapNodeId(value: unknown): value is MapNodeId {
   return typeof value === 'string' && value in NODE_MAP;
+}
+
+function isPlayableFactionId(value: unknown): value is PlayableFactionId {
+  return typeof value === 'string' && value in PLAYABLE_FACTION_MAP;
 }
 
 function isPressureCampaignStatus(value: unknown): value is PressureCampaignStatus {
@@ -121,7 +127,8 @@ function normalizeSelectionState(state: GameState): void {
   const pendingActions: string[] = [];
   for (const actionId of rawPendingActions) {
     if (typeof actionId !== 'string' || pendingActions.includes(actionId)) continue;
-    if (!getAction(actionId)) continue;
+    const action = getAction(actionId);
+    if (!action || !getActionAvailability(state, action).available) continue;
     pendingActions.push(actionId);
   }
   state.pendingActions = pendingActions.slice(0, getActionSlots(state));
@@ -292,6 +299,12 @@ export function migrateState(state: GameState, version: number): GameState {
   if (version < 5) {
     state.warFronts ??= createInitialWarFronts(state.week);
   }
+  if (version < 6) {
+    state.playableFactionId ??= DEFAULT_PLAYABLE_FACTION_ID;
+  }
+  state.playableFactionId = isPlayableFactionId(state.playableFactionId)
+    ? state.playableFactionId
+    : DEFAULT_PLAYABLE_FACTION_ID;
   state.pendingActions ??= [];
   state.pendingTargets ??= {};
   state.scheduledEffects ??= [];

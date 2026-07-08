@@ -8,6 +8,7 @@ import type {
   TimelineEntry,
 } from '../types/gameTypes';
 import type { Rng } from './rng';
+import { getPlayableFaction } from '../data/playableFactions';
 import { getRole } from '../data/roles';
 
 export function clamp(value: number): number {
@@ -76,11 +77,21 @@ export function getActionSlots(state: GameState): number {
   return Math.max(1, Math.min(3, slots));
 }
 
+export function isActionVisibleForFaction(state: GameState, action: ActionDef): boolean {
+  const faction = getPlayableFaction(state.playableFactionId);
+  if (action.factionRestriction && !action.factionRestriction.includes(faction.id)) return false;
+  if (faction.disabledActionIds?.includes(action.id)) return false;
+  return true;
+}
+
 /**
  * Availability check for the command panel. Locked actions always come with
  * a human-readable reason — they never disappear silently.
  */
 export function getActionAvailability(state: GameState, action: ActionDef): ActionAvailability {
+  if (!isActionVisibleForFaction(state, action)) {
+    return { available: false, lockedReason: 'Unavailable to this faction' };
+  }
   if (action.roleRestriction && state.selectedRole && !action.roleRestriction.includes(state.selectedRole)) {
     const roles = action.roleRestriction
       .map((r) => getRole(r)?.name ?? r)

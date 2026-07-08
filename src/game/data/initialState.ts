@@ -3,18 +3,24 @@ import type {
   ActorState,
   DifficultyId,
   GameState,
+  MapState,
   MetricInfo,
   Metrics,
+  NodeEffectDef,
   PhaseId,
   PhaseInfo,
+  PlayableFactionId,
   RoleId,
+  WarFrontEffect,
+  WarFrontStateMap,
 } from '../types/gameTypes';
 import { ACTORS } from './actors';
 import { getDifficulty } from './difficulty';
+import { DEFAULT_PLAYABLE_FACTION_ID, getPlayableFaction } from './playableFactions';
 import { getRole } from './roles';
-import { clampMetrics } from '../engine/actionEngine';
+import { clamp, clampMetrics } from '../engine/actionEngine';
 import { createInitialMap } from '../engine/mapEngine';
-import { createInitialWarFronts } from '../engine/warFrontEngine';
+import { createInitialWarFronts, deriveWarFrontStatus } from '../engine/warFrontEngine';
 
 export const MAX_WEEKS = 104;
 
@@ -108,14 +114,43 @@ function initialActors(): Record<ActorId, ActorState> {
   return out;
 }
 
+function applyStartingMapModifiers(map: MapState, modifiers: NodeEffectDef[]): void {
+  for (const modifier of modifiers) {
+    const node = map.nodes[modifier.nodeId];
+    if (!node) continue;
+    node.stability = clamp(node.stability + (modifier.stability ?? 0));
+    node.riskLevel = clamp(node.riskLevel + (modifier.riskLevel ?? 0));
+    node.cyberExposure = clamp(node.cyberExposure + (modifier.cyberExposure ?? 0));
+  }
+}
+
+function applyStartingWarFrontModifiers(fronts: WarFrontStateMap, modifiers: WarFrontEffect[]): void {
+  for (const modifier of modifiers) {
+    const front = fronts[modifier.frontId];
+    if (!front) continue;
+    front.intensity = clamp(front.intensity + (modifier.intensity ?? 0));
+    front.momentum = Math.max(-100, Math.min(100, Math.round((front.momentum + (modifier.momentum ?? 0)) * 100) / 100));
+    front.escalationLevel = Math.max(1, Math.min(5, Math.round(front.escalationLevel + (modifier.escalation ?? 0)))) as 1 | 2 | 3 | 4 | 5;
+    front.status = deriveWarFrontStatus(front.intensity);
+    if (modifier.modifier && !front.activeModifiers.includes(modifier.modifier)) {
+      front.activeModifiers = [modifier.modifier, ...front.activeModifiers].slice(0, 5);
+    }
+  }
+}
+
 export function createInitialState(
   roleId: RoleId,
   seed: number,
   difficultyId: DifficultyId = 'adviser',
+  playableFactionId: PlayableFactionId = DEFAULT_PLAYABLE_FACTION_ID,
 ): GameState {
+  const faction = getPlayableFaction(playableFactionId);
   const role = getRole(roleId);
   const difficulty = getDifficulty(difficultyId);
   const metrics: Metrics = { ...BASE_METRICS };
+  for (const [key, delta] of Object.entries(faction.startingMetricModifiers)) {
+    metrics[key as keyof Metrics] += delta ?? 0;
+  }
   if (role) {
     for (const [key, delta] of Object.entries(role.startingModifiers)) {
       metrics[key as keyof Metrics] += delta ?? 0;
@@ -124,6 +159,10 @@ export function createInitialState(
   for (const [key, delta] of Object.entries(difficulty.startingModifiers)) {
     metrics[key as keyof Metrics] += delta ?? 0;
   }
+  const map = createInitialMap();
+  applyStartingMapModifiers(map, faction.startingMapNodeModifiers);
+  const warFronts = createInitialWarFronts(1);
+  applyStartingWarFrontModifiers(warFronts, faction.startingWarFrontModifiers);
 
   return {
     campaignId: `campaign-${seed.toString(16)}-${Date.now().toString(36)}`,
@@ -133,6 +172,7 @@ export function createInitialState(
     week: 1,
     maxWeeks: MAX_WEEKS,
     phase: 1,
+    playableFactionId: faction.id,
     selectedRole: roleId,
     difficulty: difficultyId,
     status: 'active',
@@ -149,7 +189,7 @@ export function createInitialState(
         type: 'system',
         title: 'Campaign start — January 2040',
         description:
-          'Russia holds Ukraine and probes Europe. The US is all-in on the Pacific. Taiwan is at war. Hormuz is open, the Straits are not safe, and Malaysia is on its own side. Good luck.',
+          `Russia holds Ukraine and probes Europe. The US is all-in on the Pacific. Taiwan is at war. Hormuz is open, the Straits are not safe, and ${faction.shortName} is on the board. Good luck.`,
       },
       {
         id: 'tl-phase-1',
@@ -164,11 +204,11 @@ export function createInitialState(
     actionCooldowns: {},
     pendingActions: [],
     pendingTargets: {},
-    map: createInitialMap(),
+    map,
     selectedNode: null,
     scheduledEffects: [],
     activePressureCampaigns: [],
-    warFronts: createInitialWarFronts(1),
+    warFronts,
     flags: [],
     ending: null,
   };

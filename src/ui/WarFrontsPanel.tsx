@@ -2,7 +2,9 @@ import type { GameState, WarFrontState } from '../game/types/gameTypes';
 import { getTheatre, NODE_MAP } from '../game/data/mapNodes';
 import { METRIC_INFO } from '../game/data/initialState';
 import { ACTIONS } from '../game/data/actions';
+import { getPlayableFaction } from '../game/data/playableFactions';
 import { getPressureCampaign } from '../game/data/pressureCampaigns';
+import { isActionVisibleForFaction } from '../game/engine/actionEngine';
 import { FRONT_CAMPAIGN_COOLDOWN_WEEKS, WAR_FRONT_CAMPAIGN_HOOKS } from '../game/engine/warFrontEngine';
 
 interface Props {
@@ -52,14 +54,15 @@ function pressureTrend(front: WarFrontState): string {
   return 'stable';
 }
 
-function counterplaySummary(front: WarFrontState): string {
-  const counters = ACTIONS.filter((action) =>
-    action.warFrontEffects?.some(
-      (effect) =>
-        effect.frontId === front.id &&
-        ((effect.intensity ?? 0) < 0 || (effect.momentum ?? 0) < 0),
-    ),
-  )
+function counterplaySummary(state: GameState, front: WarFrontState): string {
+  const counters = ACTIONS.filter((action) => isActionVisibleForFaction(state, action))
+    .filter((action) =>
+      action.warFrontEffects?.some(
+        (effect) =>
+          effect.frontId === front.id &&
+          ((effect.intensity ?? 0) < 0 || (effect.momentum ?? 0) < 0),
+      ),
+    )
     .slice(0, 3)
     .map((action) => action.name.replace('Activate ', '').replace('Launch ', ''));
   return counters.length > 0 ? counters.join(' / ') : 'No direct action counter';
@@ -122,6 +125,7 @@ function recentShiftSummary(front: WarFrontState): string {
 
 export function WarFrontsPanel({ state }: Props) {
   const fronts = Object.values(state.warFronts);
+  const faction = getPlayableFaction(state.playableFactionId);
 
   return (
     <section className="flex min-h-0 flex-col rounded-lg border border-slate-800 bg-slate-900/60">
@@ -158,7 +162,7 @@ export function WarFrontsPanel({ state }: Props) {
               </span>
             </div>
             <p className="mt-1.5 truncate text-[10px] text-slate-500">
-              <span className="font-semibold text-slate-400">Malaysia impact:</span>{' '}
+              <span className="font-semibold text-slate-400">{faction.factionLabelOverrides?.impactLabel ?? `${faction.shortName} impact`}:</span>{' '}
               {impactSummary(front)}
             </p>
             <p className="mt-1 truncate text-[10px] text-slate-500">
@@ -167,7 +171,7 @@ export function WarFrontsPanel({ state }: Props) {
             </p>
             <p className="mt-1 truncate text-[10px] text-slate-500">
               <span className="font-semibold text-slate-400">Counterplay:</span>{' '}
-              {counterplaySummary(front)}
+              {counterplaySummary(state, front)}
             </p>
             <p className="mt-1 truncate text-[10px] text-slate-500">
               <span className="font-semibold text-slate-400">Campaign risk:</span>{' '}

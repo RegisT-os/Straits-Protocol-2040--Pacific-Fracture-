@@ -1,27 +1,29 @@
 # Straits Protocol 2040: Pacific Fracture
 
-A fictional, turn-based war-game-lite Malaysia / ASEAN crisis simulator set in
-2040. You advise Malaysia, a middle power trying to survive a fractured global
-order without becoming anyone's client state.
+A fictional, turn-based war-game-lite crisis simulator set in 2040. You choose
+a playable command perspective and try to survive a fractured global order
+without becoming anyone's client state.
 
 Russia won in Ukraine and runs a grey-zone franchise against Europe. The US
 pivoted hard to APAC. Taiwan and its allies are fighting a major Pacific war
 against a weakened, dangerous China. Cyberattacks are weather. Satellites are
 contested. ASEAN cannot decide which meeting room to use.
 
-This is v0.6: the Orbital Resilience slice. Malaysia still plays from the ASEAN
-command layer, while six off-map world-war fronts progress every week and spill
-pressure into national metrics, strategic map nodes, incidents, and theatre
-pressure campaigns. v0.6 keeps the v0.5.1 readability and balance work, then
-adds one concrete orbital pressure campaign plus a few focused PNT counterplay
-actions.
+This is v0.7: the Playable Factions Foundation. Malaysia remains the default
+middle-power survival campaign, and the setup flow now also supports Singapore,
+Indonesia, and Taiwan Allied Command as typed, deterministic, data-driven
+playable perspectives. The v0.6 orbital resilience layer and six off-map
+world-war fronts remain intact.
 
 ## How to play
 
 - 1 turn = 1 week. The campaign runs 104 weeks across 5 phases.
+- Pick a playable faction: Malaysia, Singapore, Indonesia, or Taiwan Allied
+  Command. Each adjusts starting metrics, map posture, war-front exposure,
+  faction labels, unique actions, and a small set of disabled actions.
 - Pick a role: Security Consultant, Policy Strategist, Intelligence Officer,
-  Finance Operator, or Military Liaison. Each has different starting metrics and
-  unique actions.
+  Finance Operator, or Military Liaison. Each still has different starting
+  metrics and role actions.
 - Each week, choose up to 3 actions, advance, watch 2-4 AI actors move, handle
   events, and keep 12 national metrics out of the red.
 - Action slots: base 1, +1 while Personal Stamina >= 65, +1 while Institutional
@@ -34,6 +36,28 @@ actions.
   can advance.
 - Map pressure: sustained theatre risk drains national metrics through modest,
   legible thresholds.
+
+## Playable Factions
+
+v0.7 adds four initial playable command perspectives:
+
+- Malaysia: the original balanced middle-power survival campaign, focused on
+  sovereignty, ASEAN cohesion, maritime control, cyber resilience, and financial
+  continuity.
+- Singapore: a financial fortress and continuity state with stronger finance,
+  trust, and cyber posture, but sharper sensitivity to dependency pressure,
+  capital flight, and Strait disruption.
+- Indonesia: an archipelago maritime power and ASEAN leadership contender with
+  stronger maritime and ASEAN tools, plus higher coordination and energy risk.
+- Taiwan Allied Command: the frontline war-game perspective, with stronger
+  cyber/orbital/front counterplay and higher starting exposure to Pacific,
+  orbital, maritime, and alignment pressure.
+
+New faction actions are intentionally narrow: Singapore gets continuity and
+financial ringfencing tools; Indonesia gets maritime patrol and ASEAN shield
+leadership tools; Taiwan Allied Command gets semiconductor corridor hardening
+and counter-blockade cyber tools. Malaysia retains the existing default action
+shape.
 
 ## Global War Fronts
 
@@ -66,7 +90,8 @@ turn to turn; they are pressure systems, not dice explosions.
 The War Fronts panel now explains each front with compact fields:
 
 - Drivers: why the front is moving.
-- Malaysia impact: the main metrics and map nodes under pressure.
+- Faction impact: the main metrics and map nodes under pressure, labelled for
+  the current faction.
 - Counterplay: existing player actions that can reduce front pressure.
 - Campaign risk: pressure campaigns that may start when intensity gets high.
 - Trend: whether front pressure is rising, stable, or decaying.
@@ -154,20 +179,23 @@ npm run build && npm run smoke
 ```
 
 `npm run sim` runs full campaigns for every role and difficulty under random and
-greedy policies. It fails if metrics, map nodes, campaigns, or war fronts leave
-their clamps; if replay determinism breaks; if scheduled effects fail; if map
-incidents or targeted actions fail; if pressure campaigns fail to start,
-refresh, complete, or disrupt; if war fronts fail to initialize, derive status,
-tick deterministically, or spill into campaigns; if save migration v1-v5 fails;
-or if the playability floor regresses. The v0.6 greedy floor is 14/15 Analyst,
-10/15 Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
+greedy policies. It also initializes every playable faction and runs all
+factions x roles x difficulties through a one-seed greedy sweep. It fails if
+metrics, map nodes, campaigns, or war fronts leave their clamps; if replay
+determinism breaks; if faction replay determinism breaks; if scheduled effects
+fail; if map incidents or targeted actions fail; if pressure campaigns fail to
+start, refresh, complete, or disrupt; if war fronts fail to initialize, derive
+status, tick deterministically, or spill into campaigns; if save migration
+v1-v6 fails; if faction-specific actions are missing or wrongly visible; or if
+the Malaysia playability floor regresses. The retained greedy floor is 14/15
+Analyst, 10/15 Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
 
 `npm run smoke` serves the built app and drives Chromium through setup, map node
-selection, targeted action selection, War Fronts and Active Campaigns rendering,
-front readability text, deterministic orbital campaign injection, 8 turns, front
-update verification, manual save, reload, and save/load preservation for map,
-campaign, and war-front state. Set `CHROMIUM_PATH` if Chromium is not at the
-default script path.
+selection, faction-specific action visibility, targeted action selection, War
+Fronts and Active Campaigns rendering, front readability text, deterministic
+orbital campaign injection, 8 turns, front update verification, manual save,
+reload, and save/load preservation for faction, map, campaign, and war-front
+state. Set `CHROMIUM_PATH` if Chromium is not at the default script path.
 
 ## Architecture
 
@@ -181,6 +209,7 @@ src/
       actions.ts
       events.ts
       difficulty.ts
+      playableFactions.ts
       mapNodes.ts
       incidents.ts
       pressureCampaigns.ts
@@ -219,11 +248,16 @@ scripts/
 Determinism: the state stores `seed` and `rngCursor`; loaded saves replay the
 same future. Engines never call `Math.random`.
 
-## Known limitations (v0.6)
+## Known limitations (v0.7)
 
 - The map is a strategic board, not a geographic SVG map.
 - War fronts are off-map abstractions, not province warfare, force ratios, or
   real-time combat.
+- Playable factions are command perspectives, not full national simulations.
+- Endings have a faction-aware overlay, but full faction-specific ending logic
+  is deferred.
+- Most events still use Malaysia/ASEAN-flavored text and have not been rewritten
+  for every faction.
 - Front spillover is rule-based and modest by design.
 - Front counterplay is explicit but still coarse; actions reduce pressure by
   front tags, not by a full negotiation or operational model.
@@ -233,19 +267,19 @@ same future. Engines never call `Math.random`.
 - Node ownership is static, not contested.
 - Pressure campaigns do not choose targets dynamically from live map conditions.
 - Completed and disrupted campaigns remain visible for campaign memory.
-- Ending logic reads metrics and flags, not map/front state directly.
+- Ending logic reads metrics and flags, not map/front/faction state directly.
 
-## Recommended v0.7 scope
+## Recommended v0.8 scope
 
-- Add front-aware event hooks that branch on front status and campaign outcomes.
-- Add limited incident spread along connected nodes for one or two incident
-  families, with sim coverage.
-- Add end-of-campaign strategic scoring for theatre risk, front trajectories,
-  completed campaigns, and disrupted campaigns.
-- Consider a small set of campaign outcome events before adding more campaign
-  templates.
+- Add faction-aware endings and a compact post-campaign scorecard.
+- Add a small number of faction-aware event text variants where Malaysia-only
+  wording is most visible.
+- Add one or two faction-specific event hooks or campaign outcome events, with
+  sim coverage.
+- Review Singapore Crisis Chair generosity and Taiwan alignment pressure after
+  more playtesting.
 - Keep geographic map rendering, full diplomacy, province warfare, and large
-  tech trees out of v0.7 unless the smaller front/event loop proves stable.
+  tech trees out of v0.8 unless the faction foundation proves stable.
 
 ## Content safety
 
