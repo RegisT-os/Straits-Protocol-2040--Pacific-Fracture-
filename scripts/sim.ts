@@ -17,6 +17,7 @@
 import { createInitialState } from '../src/game/data/initialState';
 import { ACTIONS } from '../src/game/data/actions';
 import { ACTORS } from '../src/game/data/actors';
+import { ENDINGS, getEndingOverlay } from '../src/game/data/endings';
 import { EVENTS } from '../src/game/data/events';
 import { INCIDENTS } from '../src/game/data/incidents';
 import { MAP_NODES } from '../src/game/data/mapNodes';
@@ -37,6 +38,12 @@ import {
   tickWarFronts,
 } from '../src/game/engine/warFrontEngine';
 import { Rng } from '../src/game/engine/rng';
+import {
+  buildDefiningDecisions,
+  buildPressureCampaignOutcomeSummary,
+  buildScorecard,
+  buildWarFrontOutcomeSummary,
+} from '../src/game/engine/scorecardEngine';
 import {
   advanceTurn,
   resolvePendingEvent,
@@ -244,6 +251,16 @@ function validateDataReferences(): void {
     check(hook.threshold >= 0 && hook.threshold <= 100, `war front campaign hook ${hook.templateId}: invalid threshold`);
   }
   for (const action of ACTIONS) validateActionMapRefs(action);
+  for (const ending of ENDINGS) {
+    for (const faction of PLAYABLE_FACTIONS) {
+      const overlay = ending.factionOverlays[faction.id];
+      check(overlay !== undefined, `ending ${ending.id}: missing ${faction.id} overlay`);
+      check(Boolean(overlay?.subtitle), `ending ${ending.id}/${faction.id}: missing subtitle`);
+      check(Boolean(overlay?.description), `ending ${ending.id}/${faction.id}: missing description`);
+      check(Boolean(overlay?.interpretation), `ending ${ending.id}/${faction.id}: missing interpretation`);
+      check(Boolean(overlay?.strategicLesson), `ending ${ending.id}/${faction.id}: missing strategic lesson`);
+    }
+  }
   for (const faction of PLAYABLE_FACTIONS) {
     for (const actionId of [...faction.uniqueActionIds, ...(faction.disabledActionIds ?? [])]) {
       check(ACTIONS.some((action) => action.id === actionId), `faction ${faction.id}: invalid action ${actionId}`);
@@ -350,6 +367,35 @@ function reportFactionSurvival(label: string, results: RunResult[]): void {
     }).join('; ');
     console.log(`  ${faction.shortName}: ${summary}`);
   }
+}
+
+function verifyFinalEvaluation(state: GameState, label: string): void {
+  check(state.ending !== null, `${label}: missing ending`);
+  if (!state.ending) return;
+  const overlay = getEndingOverlay(state.ending.endingId, state.playableFactionId);
+  check(Boolean(overlay.subtitle && overlay.description), `${label}: missing faction ending overlay`);
+
+  const scorecard = buildScorecard(state);
+  check(scorecard.length === 10, `${label}: scorecard did not produce 10 categories`);
+  check(scorecard.some((item) => item.factionCritical), `${label}: scorecard has no faction-critical categories`);
+  for (const item of scorecard) {
+    check(item.score >= 0 && item.score <= 100, `${label}: scorecard ${item.id} out of range`);
+    check(['A', 'B', 'C', 'D', 'F'].includes(item.grade), `${label}: scorecard ${item.id} invalid grade`);
+  }
+
+  const frontSummary = buildWarFrontOutcomeSummary(state);
+  check(frontSummary.length === WAR_FRONTS.length, `${label}: war front summary length mismatch`);
+  for (const front of frontSummary) {
+    check(front.intensity >= 0 && front.intensity <= 100, `${label}: front summary ${front.id} intensity out of range`);
+  }
+
+  const campaignSummary = buildPressureCampaignOutcomeSummary(state);
+  check(campaignSummary.completed >= 0, `${label}: campaign completed count invalid`);
+  check(campaignSummary.disrupted >= 0, `${label}: campaign disrupted count invalid`);
+  check(campaignSummary.active >= 0, `${label}: campaign active count invalid`);
+
+  const decisions = buildDefiningDecisions(state);
+  check(decisions.length > 0 && decisions.length <= 5, `${label}: defining decisions did not safely generate`);
 }
 
 /** Random policy: fills all slots with random available actions. */
@@ -912,6 +958,7 @@ console.log(`Faction determinism (Singapore seed 77, replayed twice): ${factionD
           final.status === 'ended' && final.ending !== null,
           `${faction.id}/${role}/${difficulty}: no ending reached`,
         );
+        verifyFinalEvaluation(final, `${faction.id}/${role}/${difficulty}`);
         check(final.week >= 12, `${faction.id}/${role}/${difficulty}: collapsed before week 12`);
         assertClamped(final, `${faction.id}/${role}/${difficulty} final`);
       }
@@ -949,6 +996,7 @@ for (const difficulty of DIFFICULTIES) {
       greedyResults.push({ difficulty, faction: DEFAULT_PLAYABLE_FACTION_ID, role, final });
       floor[difficulty].total++;
       if (!final.ending?.early) floor[difficulty].full++;
+      verifyFinalEvaluation(final, `${DEFAULT_PLAYABLE_FACTION_ID}/${role}/${difficulty}/${s}`);
       console.log(
         `  ${difficulty} ${role} seed=${s} → week ${final.week}, ${final.ending?.endingId}${final.ending?.early ? ' (early)' : ''}`,
       );

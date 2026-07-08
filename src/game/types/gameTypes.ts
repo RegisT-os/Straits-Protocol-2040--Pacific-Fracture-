@@ -712,12 +712,56 @@ export interface EndingDef {
   title: string;
   description: string;
   tone: 'good' | 'mixed' | 'bad';
+  factionOverlays: Record<PlayableFactionId, EndingFactionOverlay>;
 }
 
 export interface EndingResult {
   endingId: EndingId;
   week: number;
   early: boolean;
+}
+
+export interface EndingFactionOverlay {
+  titleOverride?: string;
+  subtitle: string;
+  description: string;
+  interpretation: string;
+  strategicLesson: string;
+  collapseExplanation?: string;
+  victoryFraming?: string;
+}
+
+export type ScoreGrade = 'A' | 'B' | 'C' | 'D' | 'F';
+
+export interface ScorecardItem {
+  id: string;
+  label: string;
+  grade: ScoreGrade;
+  score: number;
+  explanation: string;
+  factionCritical: boolean;
+}
+
+export interface WarFrontOutcomeItem {
+  id: WarFrontId;
+  name: string;
+  status: WarFrontStatus;
+  intensity: number;
+  escalationLevel: 1 | 2 | 3 | 4 | 5;
+  phrase: 'contained' | 'endured' | 'unstable' | 'lost control';
+}
+
+export interface PressureCampaignOutcomeSummary {
+  completed: number;
+  disrupted: number;
+  active: number;
+  worstUnresolved: string | null;
+  bestDisrupted: string | null;
+}
+
+export interface DefiningDecision {
+  label: string;
+  detail: string;
 }
 
 // ---------------------------------------------------------------------------

@@ -258,6 +258,56 @@ try {
   if (frontsAfterLoad !== 6) throw new Error(`expected 6 war fronts after reload, got ${frontsAfterLoad}`);
   console.log('save/load round-trip ok - map, campaign, and war front state survived');
 
+  await page.evaluate(() => {
+    const key = 'straits-protocol-2040-save';
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('save missing before ending injection');
+    const envelope = JSON.parse(raw);
+    envelope.state.status = 'ended';
+    envelope.state.week = 104;
+    envelope.state.ending = { endingId: 'sovereign-middle-power', week: 104, early: false };
+    envelope.state.completedActions = [
+      ...(envelope.state.completedActions ?? []),
+      { week: 80, actionId: 'activate-continuity-authority', name: 'Activate Continuity Authority' },
+      { week: 84, actionId: 'ringfence-financial-flows', name: 'Ringfence Financial Flows' },
+    ];
+    envelope.state.activePressureCampaigns = [
+      ...(envelope.state.activePressureCampaigns ?? []),
+      {
+        id: 'smoke-disrupted-capital-flight',
+        templateId: 'markets-capital-flight',
+        actorId: 'financial-markets',
+        title: 'Capital Flight Cycle',
+        description: 'Smoke-test disrupted campaign state.',
+        theatre: 'cyber-financial',
+        targetNodeIds: ['bnm-core', 'bursa-node', 'payment-rails'],
+        startedWeek: 70,
+        durationWeeks: 4,
+        currentWeek: 2,
+        intensity: 2,
+        status: 'disrupted',
+        tags: ['markets', 'finance', 'confidence'],
+        counterActionTags: ['finance', 'confidence', 'singapore'],
+        weeklyNodeEffects: { riskLevel: 1.5, stability: -0.5 },
+        weeklyMetricEffects: { financialContinuity: -0.35 },
+        completionEffects: { metricEffects: { financialContinuity: -1.5, institutionalTrust: -1 } },
+        disruptionEffects: { metricEffects: { financialContinuity: 3, institutionalTrust: 1 } },
+      },
+    ];
+    localStorage.setItem(key, JSON.stringify(envelope));
+  });
+  await page.reload();
+  await page.click('button:has-text("Load saved campaign")');
+  await page.waitForSelector('text=Continuity Fortress');
+  await page.waitForSelector('text=Singapore');
+  await page.waitForSelector('text=Campaign Scorecard');
+  await page.waitForSelector('text=War Front Outcomes');
+  await page.waitForSelector('text=Pressure Campaign Outcomes');
+  await page.waitForSelector('text=Defining Decisions');
+  await page.waitForSelector('text=Financial Continuity');
+  await page.waitForSelector('text=Capital Flight Cycle');
+  console.log('ending scorecard renders for selected faction');
+
   if (errors.length) throw new Error(`console errors:\n${errors.join('\n')}`);
   console.log('no console errors');
   await browser.close();
