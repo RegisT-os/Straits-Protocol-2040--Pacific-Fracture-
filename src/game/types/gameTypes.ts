@@ -270,7 +270,10 @@ export type PlayableFactionId =
   | 'malaysia'
   | 'singapore'
   | 'indonesia'
-  | 'taiwan-allied-command';
+  | 'taiwan-allied-command'
+  | 'us-pacific-command'
+  | 'european-defence-compact'
+  | 'russia-eurasian-network';
 
 export interface PlayableFactionLabelOverrides {
   impactLabel?: string;

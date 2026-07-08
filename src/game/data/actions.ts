@@ -189,6 +189,156 @@ export const ACTIONS: ActionDef[] = [
     cooldown: 7,
   },
   {
+    id: 'surge-allied-pacific-logistics',
+    name: 'Surge Allied Pacific Logistics',
+    description:
+      'Move sealift, fuel, spares and allied staging capacity into the Pacific support corridor. Deterrence improves; fatigue rises.',
+    category: 'maritime',
+    factionRestriction: ['us-pacific-command'],
+    nodeEffects: [
+      { nodeId: 'us-pacom-node', stability: 5, riskLevel: -3 },
+      { nodeId: 'taipei-command', stability: 5, riskLevel: -4 },
+      { nodeId: 'scs-air-sea-corridor', stability: 4, riskLevel: -3 },
+    ],
+    metricEffects: { sovereignty: 2, maritimeControl: 8, orbitalAccess: 3, aseanCohesion: 3, alignmentPressure: 2, mentalLoad: 4 },
+    actorEffects: [
+      { actorId: 'us-pacom', relationship: 4, pressure: -4 },
+      { actorId: 'taiwan-allied', relationship: 5, pressure: -4 },
+      { actorId: 'china-frag', pressure: 4, aggression: 2 },
+    ],
+    warFrontEffects: [
+      { frontId: 'pacific-war-front', intensity: -5, momentum: -5, modifier: 'Allied Pacific logistics surge' },
+      { frontId: 'maritime-war-front', intensity: -5, momentum: -6, modifier: 'Pacific logistics corridor' },
+      { frontId: 'orbital-war-front', intensity: -2, momentum: -3, modifier: 'Logistics sensor fusion' },
+    ],
+    cooldown: 6,
+  },
+  {
+    id: 'expand-orbital-deterrence-net',
+    name: 'Expand Orbital Deterrence Net',
+    description:
+      'Fuse allied PNT, imaging and communications coverage into a more resilient orbital deterrence net. China notices every uplink.',
+    category: 'orbital',
+    factionRestriction: ['us-pacific-command'],
+    nodeEffects: [
+      { nodeId: 'commercial-satnet', stability: 6, riskLevel: -5 },
+      { nodeId: 'maritime-imaging', stability: 6, riskLevel: -5 },
+      { nodeId: 'emergency-nav-mesh', stability: 5, riskLevel: -4 },
+      { nodeId: 'financial-timing-link', stability: 4, riskLevel: -3 },
+    ],
+    metricEffects: { sovereignty: 1, orbitalAccess: 10, cyberResilience: 2, alignmentPressure: 2, mentalLoad: 3 },
+    actorEffects: [{ actorId: 'china-frag', pressure: 5, aggression: 4 }],
+    warFrontEffects: [
+      { frontId: 'orbital-war-front', intensity: -7, momentum: -8, modifier: 'Orbital deterrence net' },
+      { frontId: 'pacific-war-front', intensity: 3, momentum: 3, modifier: 'Visible orbital deterrence' },
+    ],
+    cooldown: 7,
+  },
+  {
+    id: 'activate-european-resilience-compact',
+    name: 'Activate European Resilience Compact',
+    description:
+      'Coordinate Brussels, national cyber teams, market authorities and energy desks into a single resilience compact.',
+    category: 'strategy',
+    factionRestriction: ['european-defence-compact'],
+    nodeEffects: [
+      { nodeId: 'european-front', stability: 6, riskLevel: -5, cyberExposure: -3 },
+      { nodeId: 'cloud-region', cyberExposure: -3, riskLevel: -2 },
+      { nodeId: 'russia-network-node', riskLevel: 2 },
+    ],
+    metricEffects: { institutionalTrust: 8, financialContinuity: 5, cyberResilience: 6, publicReality: 3, energyAssurance: -2, personalStamina: -3 },
+    actorEffects: [
+      { actorId: 'europe-compact', relationship: 6, pressure: -5 },
+      { actorId: 'russia-network', pressure: 4 },
+    ],
+    warFrontEffects: [
+      { frontId: 'european-pressure-front', intensity: -6, momentum: -7, modifier: 'European resilience compact' },
+      { frontId: 'cyber-war-front', intensity: -3, momentum: -4, modifier: 'European cyber resilience' },
+      { frontId: 'financial-war-front', intensity: -2, momentum: -2, modifier: 'European market backstop' },
+    ],
+    cooldown: 6,
+  },
+  {
+    id: 'tighten-coordinated-sanctions-regime',
+    name: 'Tighten Coordinated Sanctions Regime',
+    description:
+      'Synchronize sanctions, export controls and enforcement cells against Russian evasion networks. Markets and neutral partners feel the squeeze.',
+    category: 'diplomacy',
+    factionRestriction: ['european-defence-compact'],
+    nodeEffects: [
+      { nodeId: 'russia-network-node', riskLevel: 6, stability: -3 },
+      { nodeId: 'european-front', stability: 3 },
+      { nodeId: 'bnm-core', riskLevel: 2 },
+    ],
+    metricEffects: { sovereignty: 2, publicReality: 3, alignmentPressure: 4, financialContinuity: -3, energyAssurance: -2 },
+    actorEffects: [
+      { actorId: 'europe-compact', relationship: 4 },
+      { actorId: 'russia-network', pressure: 8, aggression: 5 },
+      { actorId: 'financial-markets', pressure: 3 },
+    ],
+    warFrontEffects: [
+      { frontId: 'european-pressure-front', intensity: -4, momentum: -5, modifier: 'Coordinated sanctions regime' },
+      { frontId: 'financial-war-front', intensity: 4, momentum: 4, modifier: 'Sanctions market squeeze' },
+      { frontId: 'cyber-war-front', intensity: 2, momentum: 2, modifier: 'Russian retaliation risk' },
+    ],
+    flagsAdded: ['europe-sanctions-tightened'],
+    cooldown: 7,
+  },
+  {
+    id: 'launch-grey-zone-pressure-package',
+    name: 'Launch Grey-Zone Pressure Package',
+    description:
+      'Coordinate cyber probes, influence drops, legal ambiguity and deniable operators against European cohesion.',
+    category: 'cyber',
+    factionRestriction: ['russia-eurasian-network'],
+    nodeEffects: [
+      { nodeId: 'european-front', riskLevel: 7, cyberExposure: 5, stability: -3 },
+      { nodeId: 'cloud-region', cyberExposure: 3 },
+      { nodeId: 'russia-network-node', stability: 3 },
+    ],
+    metricEffects: { publicReality: 6, cyberResilience: 4, institutionalTrust: -4, alignmentPressure: 3, mentalLoad: 3 },
+    actorEffects: [
+      { actorId: 'russia-network', relationship: 4, pressure: -4 },
+      { actorId: 'europe-compact', pressure: 6, aggression: 3 },
+    ],
+    warFrontEffects: [
+      { frontId: 'european-pressure-front', intensity: 6, momentum: 7, modifier: 'Grey-zone pressure package' },
+      { frontId: 'cyber-war-front', intensity: 5, momentum: 6, modifier: 'Russian cyber initiative' },
+    ],
+    risk: {
+      label: 'Attribution blowback',
+      chance: 0.28,
+      metricEffects: { financialContinuity: -3, institutionalTrust: -3, alignmentPressure: 3 },
+      actorEffects: [{ actorId: 'europe-compact', pressure: 5 }],
+      report: 'European investigators connect the pressure package to Russian tasking. Sanctions desks get louder.',
+    },
+    cooldown: 5,
+  },
+  {
+    id: 'expand-sanctions-evasion-corridors',
+    name: 'Expand Sanctions Evasion Corridors',
+    description:
+      'Open new energy, finance and technology-routing corridors through friendly intermediaries and opaque settlement chains.',
+    category: 'finance',
+    factionRestriction: ['russia-eurasian-network'],
+    nodeEffects: [
+      { nodeId: 'russia-network-node', stability: 5, riskLevel: -3 },
+      { nodeId: 'european-front', riskLevel: 2 },
+      { nodeId: 'bnm-core', riskLevel: 2 },
+    ],
+    metricEffects: { financialContinuity: 8, energyAssurance: 6, sovereignty: 2, institutionalTrust: -4, publicReality: -2 },
+    actorEffects: [
+      { actorId: 'russia-network', relationship: 5, pressure: -5 },
+      { actorId: 'financial-markets', pressure: 4 },
+      { actorId: 'china-frag', relationship: 3 },
+    ],
+    warFrontEffects: [
+      { frontId: 'financial-war-front', intensity: -3, momentum: -4, modifier: 'Sanctions evasion corridors' },
+      { frontId: 'european-pressure-front', intensity: 3, momentum: 3, modifier: 'Evasion network friction' },
+    ],
+    cooldown: 6,
+  },
+  {
     id: 'strict-neutrality',
     name: 'Preserve Strict Neutrality',
     description:

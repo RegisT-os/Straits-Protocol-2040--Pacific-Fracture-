@@ -9,18 +9,20 @@ pivoted hard to APAC. Taiwan and its allies are fighting a major Pacific war
 against a weakened, dangerous China. Cyberattacks are weather. Satellites are
 contested. ASEAN cannot decide which meeting room to use.
 
-This is v0.8: Faction-Aware Endings + Campaign Scorecard. Malaysia remains the
-default middle-power survival campaign, and the setup flow also supports
-Singapore, Indonesia, and Taiwan Allied Command as typed, deterministic,
-data-driven playable perspectives. v0.8 keeps role mechanics shared, keeps the
-ending triggers compact, and adds faction-specific ending overlays plus a final
-campaign evaluation.
+This is v0.9: Major Power Playable Factions. Malaysia remains the default
+middle-power survival campaign, and the setup flow now supports seven typed,
+deterministic, data-driven playable perspectives: Malaysia, Singapore,
+Indonesia, Taiwan Allied Command, US Pacific Command, European Defence Compact,
+and Russia Eurasian Network. v0.9 keeps role mechanics shared, keeps the ending
+triggers compact, and extends faction-specific setup copy, actions, scorecard
+emphasis, and ending overlays to the new major-power command seats.
 
 ## How to play
 
 - 1 turn = 1 week. The campaign runs 104 weeks across 5 phases.
-- Pick a playable faction: Malaysia, Singapore, Indonesia, or Taiwan Allied
-  Command. Each adjusts starting metrics, map posture, war-front exposure,
+- Pick a playable faction: Malaysia, Singapore, Indonesia, Taiwan Allied
+  Command, US Pacific Command, European Defence Compact, or Russia Eurasian
+  Network. Each adjusts starting metrics, map posture, war-front exposure,
   faction labels, unique actions, and a small set of disabled actions.
 - Pick a role: Security Consultant, Policy Strategist, Intelligence Officer,
   Finance Operator, or Military Liaison. Each still has different starting
@@ -40,7 +42,7 @@ campaign evaluation.
 
 ## Playable Factions
 
-v0.7 adds four initial playable command perspectives:
+v0.7 added four initial playable command perspectives:
 
 - Malaysia: the original balanced middle-power survival campaign, focused on
   sovereignty, ASEAN cohesion, maritime control, cyber resilience, and financial
@@ -54,26 +56,52 @@ v0.7 adds four initial playable command perspectives:
   cyber/orbital/front counterplay and higher starting exposure to Pacific,
   orbital, maritime, and alignment pressure.
 
-New faction actions are intentionally narrow: Singapore gets continuity and
+v0.9 adds three major-power command perspectives:
+
+- US Pacific Command: a theatre command focused on Pacific, orbital and maritime
+  war-front posture, Taiwan support corridors, allied logistics and deterrence.
+  It has powerful military/orbital tools, but high escalation, alignment and
+  mandate-fatigue risk.
+- European Defence Compact: a fragile Brussels-led coalition focused on the
+  European Pressure, Financial and Cyber fronts, sanctions discipline, energy
+  stress, industrial resilience and public legitimacy.
+- Russia Eurasian Network: a revisionist pressure network focused on European,
+  Cyber and Financial pressure, disinformation, energy leverage, sanctions
+  evasion and grey-zone coercion. It gains potent pressure tools but faces
+  sanctions blowback, isolation and internal trust problems.
+
+Faction actions are intentionally narrow: Singapore gets continuity and
 financial ringfencing tools; Indonesia gets maritime patrol and ASEAN shield
 leadership tools; Taiwan Allied Command gets semiconductor corridor hardening
-and counter-blockade cyber tools. Malaysia retains the existing default action
-shape.
+and counter-blockade cyber tools; US Pacific Command gets allied logistics and
+orbital deterrence tools; Europe gets resilience compact and coordinated
+sanctions tools; Russia gets grey-zone pressure and sanctions-evasion tools.
+Malaysia retains the existing default action shape.
 
 v0.7.1 makes the shared role archetypes read as seats inside the selected
 command perspective. Security, policy, intelligence, finance, and military
 cards now reference the appropriate institutions: for example CSA/GovTech/MAS
 and SAF/RSN/MPA for Singapore, BSSN/Kemlu/Bank Indonesia/OJK/TNI AL/Bakamla for
 Indonesia, and TWCERT/MODA/NSC/MOFA/CBC/TWSE/MND for Taiwan Allied Command.
+v0.9 extends that presentation layer to INDOPACOM and allied logistics for US
+Pacific Command, Brussels/NATO/sanctions/energy coordination for Europe, and
+Eurasian pressure networks, grey-zone operators and sanctions evasion desks for
+Russia.
 
 ## Faction-Aware Endings and Scorecard
 
-v0.8 keeps the original ending IDs and trigger logic, then applies a data-driven
+v0.8 kept the original ending IDs and trigger logic, then applies a data-driven
 faction overlay to the final screen. The same mechanical ending can now read as
 Sovereignty Preserved for Malaysia, Continuity Fortress or Financial Lifeboat
 State for Singapore, Archipelago Shield or Jakarta Overextension for Indonesia,
 and Pacific Holdout, Semiconductor Lifeline, Allied Spearpoint or Blockade
 Exhaustion for Taiwan Allied Command.
+
+v0.9 extends those overlays to major powers, including Pacific Shield Holds,
+Overstretched Hegemon and Taiwan Corridor Preserved for US Pacific Command;
+Continental Shield, Brussels Holds the Line and Energy Winter Collapse for the
+European Defence Compact; and Eurasian Breakout, Grey-Zone Victory, Sanctions
+Cage and Isolation Spiral for Russia Eurasian Network.
 
 The ending screen now includes a compact campaign scorecard:
 
@@ -215,28 +243,28 @@ npm run build && npm run smoke
 ```
 
 `npm run sim` runs full campaigns for every role and difficulty under random and
-greedy policies. It also initializes every playable faction and runs all
+greedy policies. It also initializes every playable faction and runs all seven
 factions x roles x difficulties through a one-seed greedy sweep. It fails if
 metrics, map nodes, campaigns, or war fronts leave their clamps; if replay
 determinism breaks; if faction replay determinism breaks; if scheduled effects
 fail; if map incidents or targeted actions fail; if pressure campaigns fail to
 start, refresh, complete, or disrupt; if war fronts fail to initialize, derive
 status, tick deterministically, or spill into campaigns; if save migration
-v1-v6 fails; if faction-specific actions are missing or wrongly visible; or if
-the faction ending overlays, scorecards, war-front summaries, pressure campaign
-summaries or defining-decision summaries fail to generate; or if the Malaysia
-playability floor regresses. The retained greedy floor is 14/15 Analyst, 10/15
-Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
+v1-v6 fails; if faction-specific actions are missing or wrongly visible; if
+faction ending overlays, scorecards, war-front summaries, pressure campaign
+summaries or defining-decision summaries fail to generate for any faction; or
+if the Malaysia playability floor regresses. The retained greedy floor is 14/15
+Analyst, 10/15 Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
 
-`npm run smoke` serves the built app and drives Chromium through setup, map node
-selection, faction-aware role-copy checks, faction-specific action visibility,
-targeted action selection, War Fronts and Active Campaigns rendering, front
-readability text, deterministic orbital campaign injection, 8 turns, front
-update verification, manual save, reload, save/load preservation for faction,
-map, campaign, and war-front state, then injects a deterministic ending save to
-verify the faction-aware ending screen, campaign scorecard, war-front outcome
-summary, pressure campaign summary, and defining decisions. Set `CHROMIUM_PATH`
-if Chromium is not at the default script path.
+`npm run smoke` serves the built app and drives Chromium through setup, major
+power faction selection, US/Russia role-copy checks, faction-specific action
+visibility, targeted action selection, War Fronts and Active Campaigns
+rendering, front readability text, deterministic orbital campaign injection, 8
+turns, front update verification, manual save, reload, save/load preservation
+for a major-power faction, map, campaign, and war-front state, then injects a
+deterministic ending save to verify the faction-aware ending screen, campaign
+scorecard, war-front outcome summary, pressure campaign summary, and defining
+decisions. Set `CHROMIUM_PATH` if Chromium is not at the default script path.
 
 ## Architecture
 
@@ -289,7 +317,7 @@ scripts/
 Determinism: the state stores `seed` and `rngCursor`; loaded saves replay the
 same future. Engines never call `Math.random`.
 
-## Known limitations (v0.8)
+## Known limitations (v0.9)
 
 - The map is a strategic board, not a geographic SVG map.
 - War fronts are off-map abstractions, not province warfare, force ratios, or
@@ -301,6 +329,9 @@ same future. Engines never call `Math.random`.
   presentation layer rather than creating a full faction-specific ending tree.
 - Scorecard grades are deterministic heuristics, not a full strategic analytics
   model.
+- Major powers are command perspectives, not full national economic, domestic
+  politics, or force-posture simulations.
+- China is still not playable.
 - Endings have a faction-aware overlay, but full faction-specific ending logic
   is deferred.
 - Most events still use Malaysia/ASEAN-flavored text and have not been rewritten
@@ -316,16 +347,20 @@ same future. Engines never call `Math.random`.
 - Completed and disrupted campaigns remain visible for campaign memory.
 - Ending logic reads metrics and flags, not map/front/faction state directly.
 
-## Recommended v0.9 scope
+## Recommended v1.0 scope
 
+- Stabilize faction balance with broader scripted runs and targeted player-path
+  tests for all seven factions.
 - Add a small number of faction-aware event text variants where Malaysia-only
   wording is most visible.
 - Add one or two faction-specific event hooks or pressure-campaign outcome
   events, with sim coverage.
 - Let scorecard results influence a small set of ending epilogue lines.
-- Review Singapore Adviser/Crisis Chair balance after more playtesting.
-- Keep geographic map rendering, full diplomacy, province warfare, and large
-  tech trees out of v0.9 unless the faction foundation proves stable.
+- Review US PACOM Adviser/Crisis Chair, Singapore Adviser, and Russia Crisis
+  Chair balance after more playtesting.
+- Keep geographic map rendering, full diplomacy, province warfare, playable
+  China, and large tech trees out of v1.0 unless the seven-faction foundation
+  proves stable.
 
 ## Content safety
 

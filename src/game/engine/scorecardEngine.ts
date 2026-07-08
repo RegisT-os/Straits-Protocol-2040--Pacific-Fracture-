@@ -43,6 +43,9 @@ function criticalIds(factionId: PlayableFactionId): Set<string> {
     singapore: ['financial-continuity', 'institutional-stability', 'cyber-resilience', 'maritime-control'],
     indonesia: ['maritime-control', 'regional-cohesion', 'strategic-autonomy', 'war-front-stewardship'],
     'taiwan-allied-command': ['war-front-stewardship', 'orbital-access', 'cyber-resilience', 'financial-continuity'],
+    'us-pacific-command': ['war-front-stewardship', 'orbital-access', 'maritime-control', 'regional-cohesion', 'command-burden'],
+    'european-defence-compact': ['war-front-stewardship', 'financial-continuity', 'cyber-resilience', 'institutional-stability', 'strategic-autonomy'],
+    'russia-eurasian-network': ['war-front-stewardship', 'cyber-resilience', 'financial-continuity', 'institutional-stability'],
   };
   return new Set(ids[factionId]);
 }
@@ -115,6 +118,8 @@ export function buildScorecard(state: GameState): ScorecardItem[] {
     : 70 + campaigns.disrupted * 8 - campaigns.completed * 10 - campaigns.active * 12;
   const autonomyInputs = faction.id === 'indonesia'
     ? [healthyMetric(state, 'sovereignty'), healthyMetric(state, 'alignmentPressure'), healthyMetric(state, 'energyAssurance')]
+    : faction.id === 'european-defence-compact'
+      ? [healthyMetric(state, 'sovereignty'), healthyMetric(state, 'alignmentPressure'), healthyMetric(state, 'energyAssurance')]
     : [healthyMetric(state, 'sovereignty'), healthyMetric(state, 'alignmentPressure')];
 
   return [
@@ -124,7 +129,9 @@ export function buildScorecard(state: GameState): ScorecardItem[] {
       average(autonomyInputs),
       faction.id === 'indonesia'
         ? 'Sovereignty, alignment pressure and energy assurance shaped Jakarta\'s freedom of action.'
-        : 'Sovereignty and alignment pressure shaped how much command agency remained.',
+        : faction.id === 'european-defence-compact'
+          ? 'Sovereignty, alignment pressure and energy assurance shaped Europe\'s room to hold the coalition.'
+          : 'Sovereignty and alignment pressure shaped how much command agency remained.',
       critical,
     ),
     item(
@@ -168,7 +175,13 @@ export function buildScorecard(state: GameState): ScorecardItem[] {
     ),
     item(
       'war-front-stewardship',
-      faction.id === 'taiwan-allied-command' ? 'Pacific War Survival' : 'War Front Stewardship',
+      faction.id === 'taiwan-allied-command' || faction.id === 'us-pacific-command'
+        ? 'Pacific War Survival'
+        : faction.id === 'european-defence-compact'
+          ? 'European Pressure Front'
+          : faction.id === 'russia-eurasian-network'
+            ? 'European Pressure Leverage'
+            : 'War Front Stewardship',
       frontScore,
       'Summarizes how much global war-front pressure was contained by the end state.',
       critical,

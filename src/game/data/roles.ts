@@ -80,6 +80,48 @@ export const ROLES: RoleDef[] = [
           'Weaker diplomatic influence',
         ],
       },
+      'us-pacific-command': {
+        commandSeat: 'INDOPACOM / Cyber Command / orbital support bridge',
+        description:
+          'You advise INDOPACOM cyber defenders, orbital command liaisons and allied logistics networks. Every intrusion could be criminal noise, China probing, or a warning that the Taiwan support corridor is about to get harder.',
+        strengths: [
+          'Stronger cyber defense posture from day one',
+          'Better orbital and logistics-system hardening',
+          'Better event detection instincts',
+        ],
+        weaknesses: [
+          'Higher mental load - allied incident reports do not stop',
+          'Weaker coalition diplomacy influence',
+        ],
+      },
+      'european-defence-compact': {
+        commandSeat: 'Brussels / cyber resilience teams / sanctions security desk',
+        description:
+          'You advise European cyber resilience teams, Brussels coordination cells and infrastructure operators facing Russian grey-zone pressure. Coalition networks are only as strong as the least ready member state.',
+        strengths: [
+          'Stronger cyber defense posture from day one',
+          'Better sanctions, finance and infrastructure hardening',
+          'Better event detection instincts',
+        ],
+        weaknesses: [
+          'Higher mental load - every member-state incident becomes political',
+          'Slower direct military response',
+        ],
+      },
+      'russia-eurasian-network': {
+        commandSeat: 'Eurasian cyber units / grey-zone operator desk',
+        description:
+          'You coordinate cyber units, deniable operators and information-security cells across the Eurasian pressure network. The hard part is keeping pressure deniable after it starts working.',
+        strengths: [
+          'Stronger cyber and disinformation pressure posture',
+          'Better sanctions-evasion network hardening',
+          'Better event detection instincts',
+        ],
+        weaknesses: [
+          'Higher blowback and isolation risk',
+          'Weaker institutional legitimacy',
+        ],
+      },
     },
     startingModifiers: {
       cyberResilience: 12,
@@ -147,6 +189,42 @@ export const ROLES: RoleDef[] = [
         ],
         weaknesses: ['Weaker direct cyber response'],
       },
+      'us-pacific-command': {
+        theme: 'Alliance management, deterrence legitimacy, Pacific coordination.',
+        commandSeat: 'INDOPACOM / allied logistics / Taiwan support corridor desk',
+        description:
+          'You work INDOPACOM, allied capitals and the Taiwan support corridor. Your weapon is the assurance package that keeps partners aligned without making them feel occupied.',
+        strengths: [
+          'Better allied coordination and logistics legitimacy',
+          'Better institutional trust',
+          'Better public mandate recovery',
+        ],
+        weaknesses: ['Weaker direct cyber response'],
+      },
+      'european-defence-compact': {
+        theme: 'Coalition legitimacy, sanctions politics, public trust.',
+        commandSeat: 'Brussels / European Defence Compact / NATO coordination rooms',
+        description:
+          'You work Brussels, compact members and NATO coordination channels where appropriate. Your weapon is the coalition formula that keeps sanctions, energy and defense moving together.',
+        strengths: [
+          'Better coalition cohesion and coordination',
+          'Better institutional trust',
+          'Better public reality recovery',
+        ],
+        weaknesses: ['Weaker direct cyber response'],
+      },
+      'russia-eurasian-network': {
+        theme: 'Pressure politics, information operations, sanctions ambiguity.',
+        commandSeat: 'Eurasian pressure network / information operations desk',
+        description:
+          'You work pressure-network principals, energy leverage channels and information operations. Your weapon is the ambiguity that makes opponents argue with themselves before they answer you.',
+        strengths: [
+          'Better pressure-network coordination',
+          'Better public reality manipulation',
+          'Better strategic leverage recovery',
+        ],
+        weaknesses: ['Weaker direct cyber defense'],
+      },
     },
     startingModifiers: {
       aseanCohesion: 12,
@@ -210,6 +288,39 @@ export const ROLES: RoleDef[] = [
           'Better warning before events land',
         ],
         weaknesses: ['Higher scandal and blowback risk on covert actions'],
+      },
+      'us-pacific-command': {
+        commandSeat: 'INDOPACOM warning / orbital command / naval deterrence cell',
+        description:
+          'You read PLA movement indicators, allied logistics anomalies, orbital warning and cyber deception aimed at the Pacific command picture. More collection is not the same as clarity.',
+        strengths: [
+          'Reads AI actor intent directly - no guessing',
+          'Stronger counter-deception and escalation warning',
+          'Better warning before events land',
+        ],
+        weaknesses: ['Higher scandal and escalation risk on covert actions'],
+      },
+      'european-defence-compact': {
+        commandSeat: 'Brussels warning / sanctions intelligence / disinfo cell',
+        description:
+          'You read Russian grey-zone traffic, sanctions evasion signals, energy pressure and coalition disinformation before they hit the public agenda.',
+        strengths: [
+          'Reads AI actor intent directly - no guessing',
+          'Stronger counter-disinformation and sanctions warning',
+          'Better warning before events land',
+        ],
+        weaknesses: ['Higher scandal and blowback risk on covert actions'],
+      },
+      'russia-eurasian-network': {
+        commandSeat: 'Grey-zone intent / sanctions evasion / influence cell',
+        description:
+          'You read European fracture points, sanctions enforcement gaps, cyber openings and influence conditions. The question is not what is true; it is which truth can be used.',
+        strengths: [
+          'Reads AI actor intent directly - no guessing',
+          'Stronger disinformation and evasion warning',
+          'Better warning before events land',
+        ],
+        weaknesses: ['Higher exposure and sanctions blowback risk'],
       },
     },
     startingModifiers: {
@@ -279,6 +390,42 @@ export const ROLES: RoleDef[] = [
         ],
         weaknesses: ['War-economy triage can bleed public trust'],
       },
+      'us-pacific-command': {
+        theme: 'Allied sustainment finance, logistics funding, mandate pressure.',
+        commandSeat: 'INDOPACOM sustainment / allied funding / logistics desk',
+        description:
+          'You sit between Pacific sustainment, allied burden-sharing and emergency logistics finance. The corridor survives only if fuel, insurance, ports and politics clear on time.',
+        strengths: [
+          'Stronger financial continuity',
+          'Better logistics funding and confidence management',
+          'Better crisis sustainment options',
+        ],
+        weaknesses: ['Overstretch and burden-sharing fights can bleed public trust'],
+      },
+      'european-defence-compact': {
+        theme: 'Sanctions finance, market stability, industrial resilience.',
+        commandSeat: 'Brussels sanctions cells / market authority / industrial desk',
+        description:
+          'You sit between sanctions cells, market authorities, industrial finance and energy support packages. Every sanction that bites Moscow also tests European balance sheets.',
+        strengths: [
+          'Stronger financial continuity',
+          'Better sanctions-market response',
+          'Better crisis funding options',
+        ],
+        weaknesses: ['Austerity and energy tradeoffs can bleed public trust'],
+      },
+      'russia-eurasian-network': {
+        theme: 'Sanctions evasion, energy leverage, opaque liquidity.',
+        commandSeat: 'Evasion corridors / energy leverage / settlement desk',
+        description:
+          'You sit between sanctions evasion desks, energy leverage channels and opaque settlement corridors. The network survives if money keeps moving without becoming too visible.',
+        strengths: [
+          'Stronger sanctions-survival continuity',
+          'Better energy and liquidity workarounds',
+          'Better crisis funding options',
+        ],
+        weaknesses: ['Isolation and corruption can bleed institutional trust'],
+      },
     },
     startingModifiers: {
       financialContinuity: 12,
@@ -345,6 +492,42 @@ export const ROLES: RoleDef[] = [
           'Stronger logistics protection',
         ],
         weaknesses: ['Higher escalation and alignment pressure'],
+      },
+      'us-pacific-command': {
+        theme: 'Naval deterrence, allied logistics, Pacific posture.',
+        commandSeat: 'INDOPACOM / naval deterrence / allied logistics cell',
+        description:
+          'You coordinate naval deterrence, allied logistics and the Taiwan support corridor. Every deployment reassures allies, tests China and spends mandate.',
+        strengths: [
+          'Stronger maritime control',
+          'Better Pacific deterrence response',
+          'Stronger logistics protection',
+        ],
+        weaknesses: ['Higher escalation and alignment pressure'],
+      },
+      'european-defence-compact': {
+        theme: 'NATO coordination, industrial support, slower deterrence.',
+        commandSeat: 'European Defence Compact / NATO coordination / industry cell',
+        description:
+          'You coordinate compact defense planners, NATO channels where appropriate and industrial support. Europe can move, but only after the coalition agrees what movement means.',
+        strengths: [
+          'Stronger logistics protection',
+          'Better European front coordination',
+          'Better industrial resilience',
+        ],
+        weaknesses: ['Slower response and higher coalition friction'],
+      },
+      'russia-eurasian-network': {
+        theme: 'Grey-zone operators, energy leverage, coercive logistics.',
+        commandSeat: 'Eurasian pressure network / grey-zone operators / energy desk',
+        description:
+          'You coordinate grey-zone operators, energy leverage and coercive logistics. Every pressure move can fracture opponents or expose the network.',
+        strengths: [
+          'Stronger grey-zone pressure',
+          'Better energy leverage',
+          'Stronger coercive logistics protection',
+        ],
+        weaknesses: ['Higher blowback and overextension pressure'],
       },
     },
     startingModifiers: {

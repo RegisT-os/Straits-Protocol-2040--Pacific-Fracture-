@@ -76,41 +76,42 @@ try {
   await page.waitForSelector('text=Pacific Fracture');
   await page.waitForSelector('text=Step 1');
   await page.waitForSelector('text=Playable Faction');
-  await page.waitForSelector('button:has-text("Singapore")');
+  await page.waitForSelector('button:has-text("US Pacific Command")');
+  await page.waitForSelector('button:has-text("Russia Eurasian Network")');
   console.log('setup screen ok');
 
-  await page.click('button:has-text("Singapore")');
-  await page.waitForSelector('text=Singapore Command Seat');
-  await page.waitForSelector('text=CSA');
-  await page.waitForSelector('text=MAS');
-  await page.waitForSelector('text=SAF');
+  await page.click('button:has-text("US Pacific Command")');
+  await page.waitForSelector('text=US PACOM Command Seat');
+  await page.waitForSelector('text=INDOPACOM');
+  await page.waitForSelector('text=orbital command');
+  await page.waitForSelector('text=naval deterrence');
   const malaysiaAgencyText =
     (await page.locator('text=NACSA').count()) +
     (await page.locator('text=Bank Negara').count()) +
     (await page.locator('text=RMN').count());
   if (malaysiaAgencyText > 0) {
-    throw new Error('Singapore role copy still shows Malaysia-specific agencies');
+    throw new Error('US PACOM role copy still shows Malaysia-specific agencies');
   }
-  console.log('Singapore role copy adapts away from Malaysia agencies');
+  console.log('US PACOM role copy adapts away from Malaysia agencies');
 
-  await page.click('button:has-text("Taiwan Allied Command")');
-  await page.waitForSelector('text=Taiwan Allied Command Seat');
-  await page.waitForSelector('text=semiconductor');
-  await page.waitForSelector('text=MND');
-  await page.waitForSelector('text=allied strike liaison');
-  console.log('Taiwan Allied role copy shows frontline command language');
+  await page.click('button:has-text("Russia Eurasian Network")');
+  await page.waitForSelector('text=Russia Network Command Seat');
+  await page.waitForSelector('text=Eurasian pressure network');
+  await page.waitForSelector('text=grey-zone');
+  await page.waitForSelector('text=sanctions evasion');
+  console.log('Russia role copy shows pressure-network language');
 
-  await page.click('button:has-text("Singapore")');
+  await page.click('button:has-text("US Pacific Command")');
   await page.click('text=Security Consultant');
   await page.click('text=Analyst');
   await page.click('button:has-text("Start Campaign")');
   await page.waitForSelector('text=Week 1/104');
-  await page.waitForSelector('text=Singapore');
+  await page.waitForSelector('text=US PACOM');
   await page.waitForSelector('text=Actions selected:');
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
   await page.waitForSelector('text=Drivers:');
-  await page.waitForSelector('text=Singapore impact:');
+  await page.waitForSelector('text=US PACOM impact:');
   await page.waitForSelector('text=Counterplay:');
   await page.waitForSelector('text=Campaign risk:');
   await page.waitForSelector('text=Trend:');
@@ -118,12 +119,12 @@ try {
   await page.waitForSelector('text=Counter tags:');
   await page.waitForSelector('text=Recent shift:');
   await page.waitForSelector('h2:has-text("Active Campaigns")');
-  await page.waitForSelector('text=Activate Continuity Authority');
-  await page.waitForSelector('text=Ringfence Financial Flows');
+  await page.waitForSelector('text=Surge Allied Pacific Logistics');
+  await page.waitForSelector('text=Expand Orbital Deterrence Net');
   await page.waitForSelector('text=Activate Terrestrial Navigation Backup');
   await page.waitForSelector('text=Harden Financial Timing Backup');
   await page.waitForSelector('text=Lease Allied Orbital Coverage');
-  console.log('Singapore campaign started (Analyst difficulty, slot counter and war fronts visible)');
+  console.log('US PACOM campaign started (Analyst difficulty, slot counter and war fronts visible)');
 
   // Strategic map renders; a node can be selected and shows detail.
   await page.waitForSelector('h2:has-text("Strategic Map")');
@@ -148,8 +149,8 @@ try {
     if (!raw) throw new Error('save missing before campaign injection');
     const envelope = JSON.parse(raw);
     envelope.version = 6;
-    if (envelope.state.playableFactionId !== 'singapore') {
-      throw new Error(`expected Singapore save, got ${envelope.state.playableFactionId}`);
+    if (envelope.state.playableFactionId !== 'us-pacific-command') {
+      throw new Error(`expected US PACOM save, got ${envelope.state.playableFactionId}`);
     }
     envelope.state.activePressureCampaigns = [
       {
@@ -183,7 +184,7 @@ try {
   });
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
-  await page.waitForSelector('text=Singapore');
+  await page.waitForSelector('text=US PACOM');
   await page.waitForSelector('text=PNT Degradation Cycle');
   await page.waitForSelector('text=INT 1');
   console.log('active campaigns panel renders orbital campaign and save/load works');
@@ -232,7 +233,7 @@ try {
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
   await page.waitForSelector('text=Week 9/104');
-  await page.waitForSelector('text=Singapore');
+  await page.waitForSelector('text=US PACOM');
   await page.waitForSelector('h2:has-text("Strategic Map")');
   await page.waitForSelector('h2:has-text("War Fronts")');
   await page.waitForSelector('text=Pacific War Front');
@@ -250,8 +251,8 @@ try {
     const raw = localStorage.getItem('straits-protocol-2040-save');
     if (!raw) throw new Error('save missing after reload');
     const state = JSON.parse(raw).state;
-    if (state.playableFactionId !== 'singapore') {
-      throw new Error(`expected Singapore faction after reload, got ${state.playableFactionId}`);
+    if (state.playableFactionId !== 'us-pacific-command') {
+      throw new Error(`expected US PACOM faction after reload, got ${state.playableFactionId}`);
     }
     return Object.keys(state.warFronts ?? {}).length;
   });
@@ -268,8 +269,8 @@ try {
     envelope.state.ending = { endingId: 'sovereign-middle-power', week: 104, early: false };
     envelope.state.completedActions = [
       ...(envelope.state.completedActions ?? []),
-      { week: 80, actionId: 'activate-continuity-authority', name: 'Activate Continuity Authority' },
-      { week: 84, actionId: 'ringfence-financial-flows', name: 'Ringfence Financial Flows' },
+      { week: 80, actionId: 'surge-allied-pacific-logistics', name: 'Surge Allied Pacific Logistics' },
+      { week: 84, actionId: 'expand-orbital-deterrence-net', name: 'Expand Orbital Deterrence Net' },
     ];
     envelope.state.activePressureCampaigns = [
       ...(envelope.state.activePressureCampaigns ?? []),
@@ -298,8 +299,8 @@ try {
   });
   await page.reload();
   await page.click('button:has-text("Load saved campaign")');
-  await page.waitForSelector('text=Continuity Fortress');
-  await page.waitForSelector('text=Singapore');
+  await page.waitForSelector('text=Pacific Shield Holds');
+  await page.waitForSelector('text=US PACOM');
   await page.waitForSelector('text=Campaign Scorecard');
   await page.waitForSelector('text=War Front Outcomes');
   await page.waitForSelector('text=Pressure Campaign Outcomes');
