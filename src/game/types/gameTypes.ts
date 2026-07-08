@@ -82,6 +82,15 @@ export type RoleId =
   | 'finance-operator'
   | 'military-liaison';
 
+export interface RolePresentation {
+  name?: string;
+  theme?: string;
+  description?: string;
+  strengths?: string[];
+  weaknesses?: string[];
+  commandSeat?: string;
+}
+
 export interface RoleDef {
   id: RoleId;
   name: string;
@@ -89,6 +98,8 @@ export interface RoleDef {
   description: string;
   strengths: string[];
   weaknesses: string[];
+  commandSeat: string;
+  presentationOverrides?: Partial<Record<PlayableFactionId, RolePresentation>>;
   /** Applied on top of the base starting metrics. */
   startingModifiers: MetricDelta;
   /** Action ids only this role can use. */

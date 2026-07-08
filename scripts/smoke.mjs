@@ -80,6 +80,27 @@ try {
   console.log('setup screen ok');
 
   await page.click('button:has-text("Singapore")');
+  await page.waitForSelector('text=Singapore Command Seat');
+  await page.waitForSelector('text=CSA');
+  await page.waitForSelector('text=MAS');
+  await page.waitForSelector('text=SAF');
+  const malaysiaAgencyText =
+    (await page.locator('text=NACSA').count()) +
+    (await page.locator('text=Bank Negara').count()) +
+    (await page.locator('text=RMN').count());
+  if (malaysiaAgencyText > 0) {
+    throw new Error('Singapore role copy still shows Malaysia-specific agencies');
+  }
+  console.log('Singapore role copy adapts away from Malaysia agencies');
+
+  await page.click('button:has-text("Taiwan Allied Command")');
+  await page.waitForSelector('text=Taiwan Allied Command Seat');
+  await page.waitForSelector('text=semiconductor');
+  await page.waitForSelector('text=MND');
+  await page.waitForSelector('text=allied strike liaison');
+  console.log('Taiwan Allied role copy shows frontline command language');
+
+  await page.click('button:has-text("Singapore")');
   await page.click('text=Security Consultant');
   await page.click('text=Analyst');
   await page.click('button:has-text("Start Campaign")');

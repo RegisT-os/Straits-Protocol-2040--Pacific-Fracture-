@@ -9,11 +9,12 @@ pivoted hard to APAC. Taiwan and its allies are fighting a major Pacific war
 against a weakened, dangerous China. Cyberattacks are weather. Satellites are
 contested. ASEAN cannot decide which meeting room to use.
 
-This is v0.7: the Playable Factions Foundation. Malaysia remains the default
-middle-power survival campaign, and the setup flow now also supports Singapore,
+This is v0.7.1: Faction-Aware Role Archetype Copy. Malaysia remains the default
+middle-power survival campaign, and the setup flow also supports Singapore,
 Indonesia, and Taiwan Allied Command as typed, deterministic, data-driven
-playable perspectives. The v0.6 orbital resilience layer and six off-map
-world-war fronts remain intact.
+playable perspectives. v0.7.1 keeps role mechanics shared, but role-card
+descriptions, institution references, strengths, weaknesses, and command-seat
+flavor now adapt to the selected faction.
 
 ## How to play
 
@@ -23,7 +24,7 @@ world-war fronts remain intact.
   faction labels, unique actions, and a small set of disabled actions.
 - Pick a role: Security Consultant, Policy Strategist, Intelligence Officer,
   Finance Operator, or Military Liaison. Each still has different starting
-  metrics and role actions.
+  metrics and role actions, while its setup copy adapts to the selected faction.
 - Each week, choose up to 3 actions, advance, watch 2-4 AI actors move, handle
   events, and keep 12 national metrics out of the red.
 - Action slots: base 1, +1 while Personal Stamina >= 65, +1 while Institutional
@@ -58,6 +59,12 @@ financial ringfencing tools; Indonesia gets maritime patrol and ASEAN shield
 leadership tools; Taiwan Allied Command gets semiconductor corridor hardening
 and counter-blockade cyber tools. Malaysia retains the existing default action
 shape.
+
+v0.7.1 makes the shared role archetypes read as seats inside the selected
+command perspective. Security, policy, intelligence, finance, and military
+cards now reference the appropriate institutions: for example CSA/GovTech/MAS
+and SAF/RSN/MPA for Singapore, BSSN/Kemlu/Bank Indonesia/OJK/TNI AL/Bakamla for
+Indonesia, and TWCERT/MODA/NSC/MOFA/CBC/TWSE/MND for Taiwan Allied Command.
 
 ## Global War Fronts
 
@@ -191,11 +198,12 @@ the Malaysia playability floor regresses. The retained greedy floor is 14/15
 Analyst, 10/15 Adviser, and 4/15 Crisis Chair campaigns reaching week 104.
 
 `npm run smoke` serves the built app and drives Chromium through setup, map node
-selection, faction-specific action visibility, targeted action selection, War
-Fronts and Active Campaigns rendering, front readability text, deterministic
-orbital campaign injection, 8 turns, front update verification, manual save,
-reload, and save/load preservation for faction, map, campaign, and war-front
-state. Set `CHROMIUM_PATH` if Chromium is not at the default script path.
+selection, faction-aware role-copy checks, faction-specific action visibility,
+targeted action selection, War Fronts and Active Campaigns rendering, front
+readability text, deterministic orbital campaign injection, 8 turns, front
+update verification, manual save, reload, and save/load preservation for
+faction, map, campaign, and war-front state. Set `CHROMIUM_PATH` if Chromium is
+not at the default script path.
 
 ## Architecture
 
@@ -248,12 +256,14 @@ scripts/
 Determinism: the state stores `seed` and `rngCursor`; loaded saves replay the
 same future. Engines never call `Math.random`.
 
-## Known limitations (v0.7)
+## Known limitations (v0.7.1)
 
 - The map is a strategic board, not a geographic SVG map.
 - War fronts are off-map abstractions, not province warfare, force ratios, or
   real-time combat.
 - Playable factions are command perspectives, not full national simulations.
+- Role mechanics remain shared across factions; v0.7.1 adapts presentation
+  copy only.
 - Endings have a faction-aware overlay, but full faction-specific ending logic
   is deferred.
 - Most events still use Malaysia/ASEAN-flavored text and have not been rewritten
